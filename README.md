@@ -1,10 +1,10 @@
 # Bumang Blog Backend
 
-NestJS 기반의 프로덕션 준비가 완료된 블로그 플랫폼 백엔드입니다. 엔터프라이즈급 관찰성, 보안, 확장성을 갖추고 있습니다.
+NestJS 기반의 개인 블로그 플랫폼 백엔드입니다.
 
 ## 개요
 
-JWT 인증, AWS S3 통합, 완전한 관찰성 스택(Prometheus + Grafana), Docker 기반 배포 및 SSL/TLS 지원을 포함한 고급 기능을 갖춘 종합 블로그 API 시스템입니다.
+JWT 인증, AWS S3 통합, 완전한 관찰성 스택(Prometheus + Grafana), Docker 기반 배포 및 SSL/TLS 지원을 갖춘 종합 블로그 API 시스템입니다.
 
 **기술 스택:** NestJS 10 · TypeScript 5.7 · PostgreSQL 15 · TypeORM · Docker · Nginx · Prometheus · Grafana
 
@@ -24,7 +24,7 @@ JWT 인증, AWS S3 통합, 완전한 관찰성 스택(Prometheus + Grafana), Doc
 - **스케줄 작업**: Cron 스케줄링을 통한 자동 정리 작업
 - **권한 레벨**: 역할 기반 및 소유자 기반 가드를 통한 세밀한 접근 제어
 
-### 프로덕션급 인프라
+### CI/CD 및 고급 모니터링 기능을 학습하기 위한 테스트 배드
 - **관찰성**: Prometheus 메트릭, Winston 구조화 로깅, Grafana 대시보드
 - **보안**: Let's Encrypt SSL을 통한 HTTPS, bcrypt 패스워드 해싱, httpOnly 쿠키, CORS 화이트리스트
 - **성능**: Docker 메모리 제한, 로그 로테이션, 데이터베이스 쿼리 최적화, 페이지네이션
