@@ -25,7 +25,7 @@ export class PostEntity {
   @Column()
   title: string;
 
-  @Column()
+  @Column({ type: 'text' })
   content: string;
 
   @Column({ type: 'text', nullable: true })

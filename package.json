@@ -25,6 +25,9 @@
     "migration:generate": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:generate -d src/data-source.ts",
     "migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d src/data-source.ts",
     "migration:revert": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:revert -d src/data-source.ts",
+    "migrate:test": "ts-node -r tsconfig-paths/register src/utils/test-yoopta-converter.ts",
+    "migrate:dry-run": "NODE_ENV=local DRY_RUN=true ts-node -r tsconfig-paths/register src/scripts/migrate-posts.ts",
+    "migrate:posts": "NODE_ENV=local ts-node -r tsconfig-paths/register src/scripts/migrate-posts.ts",
     "logs": "tail -f logs/app.log",
     "logs:error": "tail -f logs/error.log"
   },
