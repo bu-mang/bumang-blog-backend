@@ -33,9 +33,10 @@ export class FindPostsQueryDto {
   })
   @IsOptional()
   @Transform(({ value }) => {
-    if (!value) return [];
+    if (!value) return undefined;
     const arr = Array.isArray(value) ? value : [value];
-    return arr.map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
+    const parsed = arr.map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
+    return parsed.length > 0 ? parsed : undefined;
   })
   @IsArray()
   tagIds?: number[];
