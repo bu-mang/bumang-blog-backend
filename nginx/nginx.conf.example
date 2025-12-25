@@ -1,0 +1,63 @@
+events {
+    worker_connections 1024;
+}
+
+http {
+    upstream backend {
+        server bumang_blog_backend:3000;
+    }
+
+    # HTTP 서버 (Let's Encrypt 인증용 + HTTPS 리다이렉트)
+    server {
+        listen 80;
+        server_name api.bumang.xyz;
+        
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+        }
+        
+        location / {
+            return 301 https://$host$request_uri;
+        }
+    }
+
+    # HTTPS 서버
+    server {
+        listen 443 ssl http2;
+        server_name api.bumang.xyz;
+
+        # SSL 인증서 설정
+        ssl_certificate /etc/letsencrypt/live/api.bumang.xyz/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/api.bumang.xyz/privkey.pem;
+        
+        # SSL 보안 설정
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_prefer_server_ciphers off;
+
+        # HSTS 보안 헤더
+        add_header Strict-Transport-Security "max-age=31536000" always;
+
+        # 백엔드로 프록시
+        location / {
+            # CORS Preflight 요청 처리
+            if ($request_method = 'OPTIONS') {
+                add_header 'Access-Control-Allow-Origin' 'https://bumang.xyz';
+                add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
+                add_header 'Access-Control-Allow-Headers' 'Authorization, Content-Type, X-Requested-With';
+                add_header 'Access-Control-Allow-Credentials' 'true';
+                add_header 'Content-Length' 0;
+                return 204;
+            }
+
+            # 실제 요청에 대한 CORS 헤더
+            add_header 'Access-Control-Allow-Origin' 'https://bumang.xyz' always;
+            add_header 'Access-Control-Allow-Credentials' 'true' always;
+
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+}
