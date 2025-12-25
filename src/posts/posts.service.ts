@@ -53,7 +53,7 @@ export class PostsService {
   // 2. 특정 카테고리의 포스트 조회 (pagenation)
   // 3. 특정 그룹의 포스트 조회 (pagenation)
   // 4. 특정 태그의 포스트 조회 (pagenation)
-  async findPostsPublic(
+  async findPosts(
     page: number,
     size: number,
     filter: {
@@ -82,7 +82,7 @@ export class PostsService {
       query.where('post.type = :type', { type });
     }
 
-    query.orderBy('post.id', 'DESC');
+    query.orderBy('post.createdAt', 'DESC');
 
     // pagination 적용
     query.skip((page - 1) * size).take(size);
@@ -123,78 +123,78 @@ export class PostsService {
     );
   }
 
-  async findPostsAuthenticated(
-    page: number,
-    size: number,
-    filter: {
-      groupId?: number;
-      categoryId?: number;
-      tagIds?: number[];
-      type?: string;
-    },
-    user: CurrentUserDto | null,
-  ): Promise<PaginatedResponseDto<PostListItemResponseDto>> {
-    console.log(user);
-    const { groupId, categoryId, tagIds, type } = filter;
+  // async findPostsAuthenticated(
+  //   page: number,
+  //   size: number,
+  //   filter: {
+  //     groupId?: number;
+  //     categoryId?: number;
+  //     tagIds?: number[];
+  //     type?: string;
+  //   },
+  //   user: CurrentUserDto | null,
+  // ): Promise<PaginatedResponseDto<PostListItemResponseDto>> {
+  //   console.log(user);
+  //   const { groupId, categoryId, tagIds, type } = filter;
 
-    const query = this.postRepo
-      .createQueryBuilder('post')
-      .leftJoinAndSelect('post.category', 'category')
-      .leftJoinAndSelect('category.group', 'group')
-      .leftJoinAndSelect('post.author', 'user')
-      .leftJoinAndSelect('post.tags', 'tag');
+  //   const query = this.postRepo
+  //     .createQueryBuilder('post')
+  //     .leftJoinAndSelect('post.category', 'category')
+  //     .leftJoinAndSelect('category.group', 'group')
+  //     .leftJoinAndSelect('post.author', 'user')
+  //     .leftJoinAndSelect('post.tags', 'tag');
 
-    if (groupId) {
-      query.where('group.id = :groupId', { groupId });
-    } else if (categoryId) {
-      query.where('category.id = :categoryId', { categoryId });
-    } else if (Array.isArray(tagIds) && tagIds.length !== 0) {
-      // 기존: query.where('tag.id = :tagIds', { tagIds });
-      query.where('tag.id IN (:...tagIds)', { tagIds });
-    } else if (type === 'dev' || type === 'life') {
-      query.where('post.type = :type', { type });
-    }
+  //   if (groupId) {
+  //     query.where('group.id = :groupId', { groupId });
+  //   } else if (categoryId) {
+  //     query.where('category.id = :categoryId', { categoryId });
+  //   } else if (Array.isArray(tagIds) && tagIds.length !== 0) {
+  //     // 기존: query.where('tag.id = :tagIds', { tagIds });
+  //     query.where('tag.id IN (:...tagIds)', { tagIds });
+  //   } else if (type === 'dev' || type === 'life') {
+  //     query.where('post.type = :type', { type });
+  //   }
 
-    query.orderBy('post.id', 'DESC');
+  //   query.orderBy('post.id', 'DESC');
 
-    // pagination 적용
-    query.skip((page - 1) * size).take(size);
+  //   // pagination 적용
+  //   query.skip((page - 1) * size).take(size);
 
-    const [posts, totalCount] = await query.getManyAndCount();
+  //   const [posts, totalCount] = await query.getManyAndCount();
 
-    const postDtos = posts.map(PostListItemResponseDto.fromEntity);
+  //   const postDtos = posts.map(PostListItemResponseDto.fromEntity);
 
-    let subject = '';
+  //   let subject = '';
 
-    if (groupId) {
-      const targetGroup = await this.groupRepo.findOne({
-        where: { id: groupId },
-      });
-      subject = targetGroup.label;
-    } else if (categoryId) {
-      const targetCategory = await this.categoryRepo.findOne({
-        where: { id: categoryId },
-      });
-      subject = targetCategory.label;
-    } else if (tagIds) {
-      const targetTags = await this.tagRepo.find({
-        where: { id: In(tagIds) },
-      });
-      subject = targetTags.map((tag) => tag.title).join(', ');
-    }
+  //   if (groupId) {
+  //     const targetGroup = await this.groupRepo.findOne({
+  //       where: { id: groupId },
+  //     });
+  //     subject = targetGroup.label;
+  //   } else if (categoryId) {
+  //     const targetCategory = await this.categoryRepo.findOne({
+  //       where: { id: categoryId },
+  //     });
+  //     subject = targetCategory.label;
+  //   } else if (tagIds) {
+  //     const targetTags = await this.tagRepo.find({
+  //       where: { id: In(tagIds) },
+  //     });
+  //     subject = targetTags.map((tag) => tag.title).join(', ');
+  //   }
 
-    if (type) {
-      subject = type;
-    }
+  //   if (type) {
+  //     subject = type;
+  //   }
 
-    return new PaginatedResponseDto(
-      totalCount, //
-      size,
-      page,
-      postDtos,
-      subject,
-    );
-  }
+  //   return new PaginatedResponseDto(
+  //     totalCount, //
+  //     size,
+  //     page,
+  //     postDtos,
+  //     subject,
+  //   );
+  // }
 
   // 5. 특정 포스트 생성
   async createPost(

@@ -1,8 +1,6 @@
 import {
-  BadRequestException,
   Body,
   Controller,
-  DefaultValuePipe,
   Delete,
   Get,
   HttpCode,
@@ -28,8 +26,6 @@ import {
   ApiCreatedResponse,
   ApiExcludeEndpoint,
   ApiOperation,
-  ApiQuery,
-  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { PostListItemResponseDto } from './dto/post-list-item-response.dto';
@@ -38,6 +34,7 @@ import { CreatePostResponseDto } from './dto/create-post-response.dto';
 import { CurrentUser } from 'src/common/decorator/current-user.decorator';
 import { CurrentUserDto } from 'src/common/dto/current-user.dto';
 import { OptionalJwtAuthGuard } from 'src/auth/guards/optional-jwt.guard';
+import { FindPostsQueryDto } from './dto/find-posts-query.dto';
 
 @ApiBearerAuth()
 @ApiTags('Posts') // Swagger UI 그룹 이름
@@ -47,7 +44,7 @@ export class PostsController {
 
   @Get('test')
   @ApiExcludeEndpoint() // 스웨거에 제외
-  findAll() {
+  getHealthCheck() {
     return [{ id: 1, title: '0426 05:28PM' }];
   }
 
@@ -56,119 +53,15 @@ export class PostsController {
     summary: '모든 게시글 조회',
     description: 'DB에 있는 모든 게시글 목록을 반환합니다.',
   })
-  @ApiQuery({
-    name: 'groupId',
-    required: false,
-    description: '그룹 아이디로 조회 시',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'categoryId',
-    required: false,
-    description: '최대 개수',
-    type: 'number',
-  })
-  @ApiQuery({
-    name: 'tagIds',
-    required: false,
-    description: '태그 아이디로 조회 (중첩 가능)',
-    example: 'number[]',
-    type: 'number[]',
-  })
-  async findAllPostsPublic(
-    @Query('groupId') groupId?: string,
-    @Query('categoryId') categoryId?: string,
-    @Query('tagIds') tagIds?: string[],
-    @Query('pageSize', new DefaultValuePipe(12), ParseIntPipe)
-    pageSize?: number,
-    @Query('pageIndex', new DefaultValuePipe(1), ParseIntPipe)
-    pageIndex?: number,
-    @Query('type') type?: string,
+  async findAllPosts(
+    @Query() query: FindPostsQueryDto,
   ): Promise<PaginatedResponseDto<PostListItemResponseDto>> {
-    const parsedGroupId = groupId !== undefined ? +groupId : undefined;
-    const parsedCategoryId = categoryId !== undefined ? +categoryId : undefined;
-
-    if (typeof groupId !== 'undefined' && isNaN(parsedGroupId)) {
-      throw new BadRequestException('groupId must be a number');
-    }
-    if (typeof categoryId !== 'undefined' && isNaN(parsedCategoryId)) {
-      throw new BadRequestException('categoryId must be a number');
-    }
-
-    // tagsId같은 경우 연달아 여러 개 쓰면 배열로 처리됨.
-    const validatedTags = Array.isArray(tagIds)
-      ? tagIds.filter(Boolean)
-      : tagIds
-        ? [tagIds]
-        : [];
-    const parsedTagIds = validatedTags
-      .map((id) => parseInt(id, 10))
-      .filter((id) => !isNaN(id));
-
-    return await this.postsService.findPostsPublic(
-      pageIndex, //
-      pageSize,
-      {
-        groupId: parsedGroupId,
-        categoryId: parsedCategoryId,
-        tagIds: parsedTagIds,
-        type: type,
-      },
-    );
-  }
-
-  @Get('authenticated')
-  @ApiOperation({
-    summary: '모든 게시글 조회',
-    description: 'DB에 있는 모든 게시글 목록을 반환합니다.',
-  })
-  @ApiResponse({
-    description: '최근 결제가 만료된 유저 목록',
-    type: PaginatedResponseDto<PostListItemResponseDto>,
-  })
-  @UseGuards(OptionalJwtAuthGuard)
-  async findAllPostsAuthenticated(
-    @CurrentUser() user?: CurrentUserDto,
-    @Query('groupId') groupId?: string,
-    @Query('categoryId') categoryId?: string,
-    @Query('tagIds') tagIds?: string[],
-    @Query('pageSize', new DefaultValuePipe(12), ParseIntPipe)
-    pageSize?: number,
-    @Query('pageIndex', new DefaultValuePipe(1), ParseIntPipe)
-    pageIndex?: number,
-    @Query('type') type?: string,
-  ): Promise<PaginatedResponseDto<PostListItemResponseDto>> {
-    const parsedGroupId = groupId !== undefined ? +groupId : undefined;
-    const parsedCategoryId = categoryId !== undefined ? +categoryId : undefined;
-
-    if (typeof groupId !== 'undefined' && isNaN(parsedGroupId)) {
-      throw new BadRequestException('groupId must be a number');
-    }
-    if (typeof categoryId !== 'undefined' && isNaN(parsedCategoryId)) {
-      throw new BadRequestException('categoryId must be a number');
-    }
-
-    // tagsId같은 경우 연달아 여러 개 쓰면 배열로 처리됨.
-    const validatedTags = Array.isArray(tagIds)
-      ? tagIds.filter(Boolean)
-      : tagIds
-        ? [tagIds]
-        : [];
-    const parsedTagIds = validatedTags
-      .map((id) => parseInt(id, 10))
-      .filter((id) => !isNaN(id));
-
-    return await this.postsService.findPostsAuthenticated(
-      pageIndex, //
-      pageSize,
-      {
-        groupId: parsedGroupId,
-        categoryId: parsedCategoryId,
-        tagIds: parsedTagIds,
-        type: type,
-      },
-      user || null,
-    );
+    return await this.postsService.findPosts(query.pageIndex, query.pageSize, {
+      groupId: query.groupId,
+      categoryId: query.categoryId,
+      tagIds: query.tagIds,
+      type: query.type,
+    });
   }
 
   @Post()
