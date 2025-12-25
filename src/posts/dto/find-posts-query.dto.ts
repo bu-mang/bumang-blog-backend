@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsInt, IsString, IsArray } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 export class FindPostsQueryDto {
   @ApiProperty({
@@ -9,6 +9,7 @@ export class FindPostsQueryDto {
     type: Number,
   })
   @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @Type(() => Number)
   @IsInt()
   groupId?: number;
@@ -19,6 +20,7 @@ export class FindPostsQueryDto {
     type: Number,
   })
   @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @Type(() => Number)
   @IsInt()
   categoryId?: number;
@@ -30,6 +32,11 @@ export class FindPostsQueryDto {
     example: [1, 2, 3],
   })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (!value) return [];
+    const arr = Array.isArray(value) ? value : [value];
+    return arr.map((id) => parseInt(id, 10)).filter((id) => !isNaN(id));
+  })
   @IsArray()
   tagIds?: number[];
 
@@ -62,6 +69,7 @@ export class FindPostsQueryDto {
     example: 'dev',
   })
   @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @IsString()
   type?: string;
 }

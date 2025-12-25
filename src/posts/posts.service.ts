@@ -72,6 +72,7 @@ export class PostsService {
       .leftJoinAndSelect('post.author', 'user')
       .leftJoinAndSelect('post.tags', 'tag');
 
+    // 필터링: 그룹아이디 or 카테고리아이디 or 태그아이디 or 분류
     if (groupId) {
       query.where('group.id = :groupId', { groupId });
     } else if (categoryId) {
@@ -82,6 +83,7 @@ export class PostsService {
       query.where('post.type = :type', { type });
     }
 
+    // 최신순 정렬
     query.orderBy('post.createdAt', 'DESC');
 
     // pagination 적용
@@ -93,6 +95,7 @@ export class PostsService {
 
     let subject = '';
 
+    // 주제에 대한 라벨 붙여주기
     if (groupId) {
       const targetGroup = await this.groupRepo.findOne({
         where: { id: groupId },
@@ -110,6 +113,7 @@ export class PostsService {
       subject = targetTags.map((tag) => tag.title).join(', ');
     }
 
+    // '분류' 필터링으로 요청 왔던거면 '분류'로.
     if (type) {
       subject = type;
     }
