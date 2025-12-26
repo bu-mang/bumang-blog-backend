@@ -16,4 +16,5 @@ export const AppDataSource = new DataSource({
   entities: [__dirname + '/**/*.entity.{ts,js}'],
   migrations: [__dirname + '/migrations/*.{ts,js}'],
   synchronize: process.env.NODE_ENV === 'development',
+  migrationsTransactionMode: 'each', // 각 마이그레이션을 개별 트랜잭션으로 실행
 });
