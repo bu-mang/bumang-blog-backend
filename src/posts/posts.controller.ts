@@ -49,19 +49,26 @@ export class PostsController {
   }
 
   @Get()
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({
     summary: '모든 게시글 조회',
     description: 'DB에 있는 모든 게시글 목록을 반환합니다.',
   })
   async findAllPosts(
     @Query() query: FindPostsQueryDto,
+    @CurrentUser() user?: CurrentUserDto,
   ): Promise<PaginatedResponseDto<PostListItemResponseDto>> {
-    return await this.postsService.findPosts(query.pageIndex, query.pageSize, {
-      groupId: query.groupId,
-      categoryId: query.categoryId,
-      tagIds: query.tagIds,
-      type: query.type,
-    });
+    return await this.postsService.findPosts(
+      query.pageIndex,
+      query.pageSize,
+      {
+        groupId: query.groupId,
+        categoryId: query.categoryId,
+        tagIds: query.tagIds,
+        type: query.type,
+      },
+      user || null,
+    );
   }
 
   @Post()

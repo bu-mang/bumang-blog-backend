@@ -62,6 +62,7 @@ export class PostsService {
       tagIds?: number[];
       type?: string;
     },
+    currentUser: CurrentUserDto | null = null,
   ): Promise<PaginatedResponseDto<PostListItemResponseDto>> {
     const { groupId, categoryId, tagIds, type } = filter;
 
@@ -72,15 +73,19 @@ export class PostsService {
       .leftJoinAndSelect('post.author', 'user')
       .leftJoinAndSelect('post.tags', 'tag');
 
+    // 권한 필터 적용 (OWNER가 아니면 OWNER 포스트 제외)
+    const permissionConditions = getPermissionCondition(currentUser);
+    query.where(permissionConditions);
+
     // 필터링: 그룹아이디 or 카테고리아이디 or 태그아이디 or 분류
     if (groupId) {
-      query.where('group.id = :groupId', { groupId });
+      query.andWhere('group.id = :groupId', { groupId });
     } else if (categoryId) {
-      query.where('category.id = :categoryId', { categoryId });
+      query.andWhere('category.id = :categoryId', { categoryId });
     } else if (Array.isArray(tagIds) && tagIds.length !== 0) {
-      query.where('tag.id IN (:...tagIds)', { tagIds });
+      query.andWhere('tag.id IN (:...tagIds)', { tagIds });
     } else if (type === 'dev' || type === 'life') {
-      query.where('post.type = :type', { type });
+      query.andWhere('post.type = :type', { type });
     }
 
     // 최신순 정렬
@@ -127,79 +132,6 @@ export class PostsService {
     );
   }
 
-  // async findPostsAuthenticated(
-  //   page: number,
-  //   size: number,
-  //   filter: {
-  //     groupId?: number;
-  //     categoryId?: number;
-  //     tagIds?: number[];
-  //     type?: string;
-  //   },
-  //   user: CurrentUserDto | null,
-  // ): Promise<PaginatedResponseDto<PostListItemResponseDto>> {
-  //   console.log(user);
-  //   const { groupId, categoryId, tagIds, type } = filter;
-
-  //   const query = this.postRepo
-  //     .createQueryBuilder('post')
-  //     .leftJoinAndSelect('post.category', 'category')
-  //     .leftJoinAndSelect('category.group', 'group')
-  //     .leftJoinAndSelect('post.author', 'user')
-  //     .leftJoinAndSelect('post.tags', 'tag');
-
-  //   if (groupId) {
-  //     query.where('group.id = :groupId', { groupId });
-  //   } else if (categoryId) {
-  //     query.where('category.id = :categoryId', { categoryId });
-  //   } else if (Array.isArray(tagIds) && tagIds.length !== 0) {
-  //     // 기존: query.where('tag.id = :tagIds', { tagIds });
-  //     query.where('tag.id IN (:...tagIds)', { tagIds });
-  //   } else if (type === 'dev' || type === 'life') {
-  //     query.where('post.type = :type', { type });
-  //   }
-
-  //   query.orderBy('post.id', 'DESC');
-
-  //   // pagination 적용
-  //   query.skip((page - 1) * size).take(size);
-
-  //   const [posts, totalCount] = await query.getManyAndCount();
-
-  //   const postDtos = posts.map(PostListItemResponseDto.fromEntity);
-
-  //   let subject = '';
-
-  //   if (groupId) {
-  //     const targetGroup = await this.groupRepo.findOne({
-  //       where: { id: groupId },
-  //     });
-  //     subject = targetGroup.label;
-  //   } else if (categoryId) {
-  //     const targetCategory = await this.categoryRepo.findOne({
-  //       where: { id: categoryId },
-  //     });
-  //     subject = targetCategory.label;
-  //   } else if (tagIds) {
-  //     const targetTags = await this.tagRepo.find({
-  //       where: { id: In(tagIds) },
-  //     });
-  //     subject = targetTags.map((tag) => tag.title).join(', ');
-  //   }
-
-  //   if (type) {
-  //     subject = type;
-  //   }
-
-  //   return new PaginatedResponseDto(
-  //     totalCount, //
-  //     size,
-  //     page,
-  //     postDtos,
-  //     subject,
-  //   );
-  // }
-
   // 5. 특정 포스트 생성
   async createPost(
     createPostDto: CreatePostDto,
@@ -230,17 +162,31 @@ export class PostsService {
       );
     }
 
-    // 사용자 권한이 User인데 Admin Only 나 Public 옵션으로 글 쓰려고 할 때.
-    if (user.role === RolesEnum.USER && readPermission !== RolesEnum.USER) {
-      this.appLoggerService.logPost(
-        'post_creation_permission_denied',
-        undefined,
-        user.userId,
-      );
-      throw new ForbiddenException(
-        `Normal Users cannot create posts with Admin-only permission.`,
-      );
+    // 작성 권한 체크
+    if (user.role === RolesEnum.USER) {
+      // USER: null 또는 user 권한으로만 작성 가능
+      if (readPermission && readPermission !== RolesEnum.USER) {
+        this.appLoggerService.logPost(
+          'post_creation_permission_denied',
+          undefined,
+          user.userId,
+        );
+        throw new ForbiddenException(
+          `Users can only create public or user-level posts.`,
+        );
+      }
+    } else if (user.role === RolesEnum.ADMIN) {
+      // ADMIN: null, user, admin 권한으로만 작성 가능 (owner 불가)
+      if (readPermission === RolesEnum.OWNER) {
+        this.appLoggerService.logPost(
+          'post_creation_permission_denied',
+          undefined,
+          user.userId,
+        );
+        throw new ForbiddenException(`Admins cannot create owner-only posts.`);
+      }
     }
+    // OWNER는 모든 권한으로 작성 가능 (체크 불필요)
 
     const existingCategory = await this.categoryRepo.findOne({
       where: { id: categoryId },
@@ -458,14 +404,24 @@ export class PostsService {
 
     existingPost.tags = validTags;
 
-    if (
-      currentUser.role === RolesEnum.USER &&
-      readPermission !== RolesEnum.USER
-    ) {
-      throw new ForbiddenException('Users can only write public posts.');
-    }
-
+    // 수정 시 권한 체크
     if (readPermission !== undefined) {
+      if (currentUser.role === RolesEnum.USER) {
+        // USER: null 또는 user 권한으로만 수정 가능
+        if (readPermission && readPermission !== RolesEnum.USER) {
+          throw new ForbiddenException(
+            'Users can only create public or user-level posts.',
+          );
+        }
+      } else if (currentUser.role === RolesEnum.ADMIN) {
+        // ADMIN: null, user, admin 권한으로만 수정 가능 (owner 불가)
+        if (readPermission === RolesEnum.OWNER) {
+          throw new ForbiddenException(
+            'Admins cannot create owner-only posts.',
+          );
+        }
+      }
+      // OWNER는 모든 권한으로 수정 가능
       existingPost.readPermission = readPermission;
     }
 

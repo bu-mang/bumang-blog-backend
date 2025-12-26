@@ -39,7 +39,7 @@ export class IsOwnerGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user; // JwtStrategy에서 넣어준 값
 
-    if (user.role === RolesEnum.ADMIN) {
+    if (user.role === RolesEnum.OWNER) {
       return true;
     }
 
