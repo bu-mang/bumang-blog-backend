@@ -4,7 +4,7 @@ events {
 
 http {
     upstream backend {
-        server bumang_blog_backend:3000;
+        server app:3000;
     }
 
     # HTTP 서버 (Let's Encrypt 인증용 + HTTPS 리다이렉트)
