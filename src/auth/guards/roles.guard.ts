@@ -43,12 +43,27 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('There is no validated User Information.');
     }
 
-    // 사용자의 역할이 requiredRoles 안에 포함되지 않았다면 접근 금지
-    if (!requiredRoles.includes(user.role)) {
-      throw new ForbiddenException('Cannot access without Authorization.');
+    // 역할 계층 구조 정의: 높은 숫자 = 높은 권한
+    const roleHierarchy = {
+      [RolesEnum.OWNER]: 3,
+      [RolesEnum.ADMIN]: 2,
+      [RolesEnum.USER]: 1,
+    };
+
+    // 사용자의 권한 레벨
+    const userLevel = roleHierarchy[user.role];
+
+    // 요구되는 역할 중 최소 레벨 찾기 (가장 낮은 권한)
+    const minRequiredLevel = Math.min(
+      ...requiredRoles.map((role) => roleHierarchy[role]),
+    );
+
+    // 사용자 레벨이 요구 레벨 이상이면 통과
+    if (userLevel >= minRequiredLevel) {
+      return true;
     }
 
-    // 통과 조건을 모두 만족하면 true 반환 → 요청 허용
-    return true;
+    // 권한 부족
+    throw new ForbiddenException('Cannot access without Authorization.');
   }
 }
