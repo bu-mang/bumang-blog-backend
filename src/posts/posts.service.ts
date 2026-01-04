@@ -579,6 +579,18 @@ export class PostsService {
     return { id: postId, view: result.raw[0].view };
   }
 
+  // USER 등급 유저의 모든 포스트 삭제 (스케줄링용)
+  async deletePostsByUserRole(): Promise<number> {
+    const result = await this.postRepo
+      .createQueryBuilder('post')
+      .leftJoin('post.author', 'author')
+      .delete()
+      .where('author.role = :role', { role: RolesEnum.USER })
+      .execute();
+
+    return result.affected ?? 0;
+  }
+
   // post.service.ts
   async deletePostsByUserId(userId: number): Promise<number> {
     const result = await this.postRepo
