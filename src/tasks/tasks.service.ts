@@ -11,7 +11,7 @@ export class TasksService {
 
   // 매일 자정에 실행: USER 등급 유저의 글 삭제
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
-    timeZone: 'Asia/seoul',
+    timeZone: 'Asia/Seoul',
   })
   async handleDeletePosts() {
     const deletedCount = await this.postService.deletePostsByUserRole();
