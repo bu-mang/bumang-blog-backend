@@ -33,6 +33,13 @@ export class PostListItemResponseDto {
     enum: RolesEnum,
     nullable: true,
   })
+  authorRole: RolesEnum;
+
+  @ApiProperty({
+    example: 'user',
+    enum: RolesEnum,
+    nullable: true,
+  })
   readPermisson: RolesEnum;
 
   @ApiProperty({ required: false, example: '0' })
@@ -60,6 +67,7 @@ export class PostListItemResponseDto {
     dto.tags =
       post.tags?.map((tag) => ({ title: tag.title, id: tag.id })) ?? [];
     dto.author = post.author?.nickname ?? 'unknown';
+    dto.authorRole = post.author?.role ?? null;
     dto.readPermisson = post.readPermission;
     dto.thumbnailUrl = post.thumbnailUrl;
     dto.type = post.type;

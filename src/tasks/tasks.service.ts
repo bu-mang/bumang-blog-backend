@@ -9,12 +9,14 @@ export class TasksService {
 
   constructor(private readonly postService: PostsService) {}
 
-  // 매일 자정에 실행
+  // 매일 자정에 실행: USER 등급 유저의 글 삭제
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
     timeZone: 'Asia/seoul',
   })
   async handleDeletePosts() {
-    const deletedCount = await this.postService.deletePostsByUserId(1);
-    this.logger.log(`🧹 Deleted ${deletedCount} posts from 'users'`);
+    const deletedCount = await this.postService.deletePostsByUserRole();
+    this.logger.log(
+      `🧹 Deleted ${deletedCount} posts from USER role members`,
+    );
   }
 }
