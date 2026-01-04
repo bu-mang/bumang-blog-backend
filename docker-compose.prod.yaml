@@ -13,6 +13,7 @@ services:
       - ./certbot/www:/var/www/certbot
     depends_on:
       - app
+      - frontend
     restart: unless-stopped
 
   certbot:
@@ -144,6 +145,29 @@ services:
           memory: 120M
         reservations:
           memory: 60M
+
+  frontend:
+    build:
+      context: ../bumang-blog-front
+      dockerfile: Dockerfile.prod
+    image: bumang/bumang-blog-frontend:latest
+    container_name: bumang_blog_frontend
+    platform: linux/arm64
+    restart: unless-stopped
+    expose:
+      - '4000'
+    env_file:
+      - ../bumang-blog-front/.env.production
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - app
+    deploy:
+      resources:
+        limits:
+          memory: 150M
+        reservations:
+          memory: 75M
 
 volumes:
   grafana_data:
