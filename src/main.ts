@@ -51,6 +51,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api-docs', app, document);
 
+  // CORS는 백엔드에서 처리
   app.enableCors({
     origin: [
       'http://localhost:4000',
