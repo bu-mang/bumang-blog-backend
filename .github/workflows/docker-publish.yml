@@ -48,6 +48,9 @@ jobs:
             echo "⏳ 앱이 올라올 때까지 대기..."
             sleep 15
 
+            echo "🔄 nginx 재시작 (DNS 캐시 갱신)..."
+            docker restart bumang_blog_nginx
+
             echo "🔍 컨테이너 상태 확인..."
             docker ps
 
