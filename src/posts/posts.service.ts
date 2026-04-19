@@ -73,10 +73,6 @@ export class PostsService {
       .leftJoinAndSelect('post.author', 'user')
       .leftJoinAndSelect('post.tags', 'tag');
 
-    // 권한 필터 적용 (OWNER가 아니면 OWNER 포스트 제외)
-    const permissionConditions = getPermissionCondition(currentUser);
-    query.where(permissionConditions);
-
     // 필터링: 그룹아이디 or 카테고리아이디 or 태그아이디 or 분류
     if (groupId) {
       query.andWhere('group.id = :groupId', { groupId });
