@@ -5,10 +5,20 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
 } from 'class-validator';
 import { RolesEnum } from 'src/users/const/roles.const';
 
 export class CreatePostDto {
+  @ApiProperty({
+    required: false,
+    description:
+      '생성 요청 멱등 키(UUID). 같은 키로 재요청 시 중복 생성 없이 기존 글을 반환합니다.',
+  })
+  @IsOptional()
+  @IsUUID()
+  clientRequestId?: string;
+
   @ApiProperty()
   @IsString()
   title: string;
