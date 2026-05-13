@@ -140,9 +140,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 120M
+          memory: 384M
         reservations:
-          memory: 60M
+          memory: 80M
 
   frontend:
     image: bumang/bumang-blog-frontend:latest

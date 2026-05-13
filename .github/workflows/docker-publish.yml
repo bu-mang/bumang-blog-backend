@@ -48,7 +48,7 @@ jobs:
             docker-compose -f docker-compose.prod.yaml --env-file .env.production run --rm app npm run migration:run
 
             echo "🚀 앱 컨테이너 교체..."
-            docker-compose -f docker-compose.prod.yaml --env-file .env.production up -d app
+            docker-compose -f docker-compose.prod.yaml --env-file .env.production up -d --remove-orphans app
 
             echo "⏳ 앱이 올라올 때까지 대기..."
             sleep 15
