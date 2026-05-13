@@ -5,7 +5,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { In, LessThan, MoreThan, Repository } from 'typeorm';
+import { In, LessThan, MoreThan, QueryFailedError, Repository } from 'typeorm';
 import { PostEntity } from './entities/post.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreatePostDto } from './dto/create-post.dto';
@@ -139,6 +139,7 @@ export class PostsService {
 
     const authorId = user.userId;
     const {
+      clientRequestId,
       title,
       content,
       categoryId,
@@ -147,6 +148,18 @@ export class PostsService {
       previewText,
       thumbnailUrl,
     } = createPostDto;
+
+    // 멱등 처리: 같은 멱등 키로 이미 생성된 글이 있으면 새로 만들지 않고 그대로 반환한다.
+    // (클라이언트가 timeout 등으로 같은 요청을 재시도해도 중복 글이 생기지 않도록)
+    if (clientRequestId) {
+      const alreadyCreated = await this.findPostByClientRequestId(
+        clientRequestId,
+        authorId,
+      );
+      if (alreadyCreated) {
+        return CreatePostResponseDto.fromEntity(alreadyCreated);
+      }
+    }
 
     const existingAuthor = await this.userRepo.findOne({
       where: { id: authorId },
@@ -228,11 +241,41 @@ export class PostsService {
       category: existingCategory,
       tags: validTags,
       comments: [],
+      clientRequestId: clientRequestId ?? null,
     });
 
-    await this.postRepo.save(post);
+    try {
+      await this.postRepo.save(post);
+    } catch (err) {
+      // 동시에 같은 멱등 키로 들어온 요청이 unique 제약(23505)에 걸린 경우 → 기존 글 반환
+      if (
+        clientRequestId &&
+        err instanceof QueryFailedError &&
+        (err as { code?: string }).code === '23505'
+      ) {
+        const alreadyCreated = await this.findPostByClientRequestId(
+          clientRequestId,
+          authorId,
+        );
+        if (alreadyCreated) {
+          return CreatePostResponseDto.fromEntity(alreadyCreated);
+        }
+      }
+      throw err;
+    }
 
     return CreatePostResponseDto.fromEntity(post);
+  }
+
+  // 멱등 키로 이미 생성된 글을 찾는다. (응답 DTO 생성을 위해 category 관계까지 로드)
+  private async findPostByClientRequestId(
+    clientRequestId: string,
+    authorId: number,
+  ): Promise<PostEntity | null> {
+    return this.postRepo.findOne({
+      where: { clientRequestId, author: { id: authorId } },
+      relations: ['category'],
+    });
   }
 
   // 6. 특정 포스트 상세 조회
