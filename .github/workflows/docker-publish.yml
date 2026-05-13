@@ -38,11 +38,16 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -e
             cd /home/ec2-user/bumang-blog-backend
             git pull
 
             docker pull ${{ secrets.DOCKER_USERNAME }}/bumang-blog-backend:latest
 
+            echo "🗄️ DB 마이그레이션 실행 (앱 교체 전 / 기존 컨테이너는 계속 서빙)..."
+            docker-compose -f docker-compose.prod.yaml --env-file .env.production run --rm app npm run migration:run
+
+            echo "🚀 앱 컨테이너 교체..."
             docker-compose -f docker-compose.prod.yaml --env-file .env.production up -d app
 
             echo "⏳ 앱이 올라올 때까지 대기..."
