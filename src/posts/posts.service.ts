@@ -85,15 +85,21 @@ export class PostsService {
       query.andWhere('post.type = :type', { type });
     }
 
-    // 최신순 정렬 + 각 포스트의 태그는 가나다/ABC 순
-    query.orderBy('post.createdAt', 'DESC').addOrderBy('tag.title', 'ASC');
+    // 최신순 정렬 (tag.title 정렬은 아래 JS에서 — SQL ORDER BY에 조인된 컬렉션 컬럼을
+    // 넣으면 TypeORM의 distinct 서브쿼리 페이지네이션이 깨져 pageSize보다 적게 내려옴)
+    query.orderBy('post.createdAt', 'DESC');
 
     // pagination 적용
     query.skip((page - 1) * size).take(size);
 
     const [posts, totalCount] = await query.getManyAndCount();
 
-    const postDtos = posts.map(PostListItemResponseDto.fromEntity);
+    const postDtos = posts.map((post) => {
+      post.tags = [...(post.tags ?? [])].sort((a, b) =>
+        a.title.localeCompare(b.title),
+      );
+      return PostListItemResponseDto.fromEntity(post);
+    });
 
     let subject = '';
 
