@@ -56,19 +56,14 @@ export class PostsController {
   })
   async findAllPosts(
     @Query() query: FindPostsQueryDto,
-    @CurrentUser() user?: CurrentUserDto,
+    // @CurrentUser() user?: CurrentUserDto,
   ): Promise<PaginatedResponseDto<PostListItemResponseDto>> {
-    return await this.postsService.findPosts(
-      query.pageIndex,
-      query.pageSize,
-      {
-        groupId: query.groupId,
-        categoryId: query.categoryId,
-        tagIds: query.tagIds,
-        type: query.type,
-      },
-      user || null,
-    );
+    return await this.postsService.findPosts(query.pageIndex, query.pageSize, {
+      groupId: query.groupId,
+      categoryId: query.categoryId,
+      tagIds: query.tagIds,
+      type: query.type,
+    });
   }
 
   @Post()
