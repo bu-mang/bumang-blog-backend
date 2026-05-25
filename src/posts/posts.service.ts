@@ -84,8 +84,8 @@ export class PostsService {
       query.andWhere('post.type = :type', { type });
     }
 
-    // 최신순 정렬
-    query.orderBy('post.createdAt', 'DESC');
+    // 최신순 정렬 + 각 포스트의 태그는 가나다/ABC 순
+    query.orderBy('post.createdAt', 'DESC').addOrderBy('tag.title', 'ASC');
 
     // pagination 적용
     query.skip((page - 1) * size).take(size);
