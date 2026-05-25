@@ -62,7 +62,7 @@ export class PostsService {
       tagIds?: number[];
       type?: string;
     },
-    currentUser: CurrentUserDto | null = null,
+    // currentUser: CurrentUserDto | null = null,
   ): Promise<PaginatedResponseDto<PostListItemResponseDto>> {
     const { groupId, categoryId, tagIds, type } = filter;
 
