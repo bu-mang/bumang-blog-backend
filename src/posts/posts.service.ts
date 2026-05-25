@@ -71,7 +71,8 @@ export class PostsService {
       .leftJoinAndSelect('post.category', 'category')
       .leftJoinAndSelect('category.group', 'group')
       .leftJoinAndSelect('post.author', 'user')
-      .leftJoinAndSelect('post.tags', 'tag');
+      .leftJoinAndSelect('post.tags', 'tag')
+      .where('post.deletedAt IS NULL');
 
     // 필터링: 그룹아이디 or 카테고리아이디 or 태그아이디 or 분류
     if (groupId) {
@@ -490,7 +491,7 @@ export class PostsService {
       );
     }
 
-    await this.postRepo.remove(existingPost);
+    await this.postRepo.softRemove(existingPost);
 
     return DeletePostResponseDto.fromEntity(existingPost);
   }
@@ -511,6 +512,7 @@ export class PostsService {
       .leftJoin('post.category', 'category')
       .leftJoin('category.group', 'group')
       .where('post.id != :id', { id: postId }) // 자기 제외
+      .andWhere('post.deletedAt IS NULL') // soft-deleted 글 제외
       .andWhere('post.readPermission IS NULL') // 🔒 퍼블릭 제한 등 조건 넣어도 됨. => readPermission null인 것만 OK!
       .select('post.id', 'id') // id라는 컬럼으로 post.id 가져옴
       .addSelect('post.title', 'title') // title이라는 컬럼으로 post.title 가져옴

@@ -6,6 +6,7 @@ import { UserEntity } from 'src/users/entities/user.entity';
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
   JoinColumn,
   JoinTable,
@@ -47,6 +48,9 @@ export class PostEntity {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @DeleteDateColumn()
+  deletedAt: Date | null;
 
   @ManyToOne(() => UserEntity, (user) => user.posts)
   author: UserEntity;
