@@ -33,5 +33,5 @@ scrape_configs:
   # Nest.js 애플리케이션 메트릭
   - job_name: 'nestjs-app'
     static_configs:
-      - targets: ['app:3000'] # Nest.js 앱 주소
+      - targets: ['app:4001'] # Nest.js 앱 주소
     metrics_path: '/metrics' # 메트릭 엔드포인트

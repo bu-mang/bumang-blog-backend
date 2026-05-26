@@ -130,7 +130,7 @@ services:
     container_name: bumang_blog_backend
     restart: unless-stopped
     expose:
-      - '3000'
+      - '4001'
     depends_on:
       - db
     env_file:

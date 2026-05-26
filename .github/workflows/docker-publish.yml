@@ -63,7 +63,7 @@ jobs:
             docker logs bumang_blog_backend --tail 50
 
             echo "🚀 Nest 앱 상태 확인 중..."
-            curl -f http://localhost:3000/ || echo "앱 연결 실패"
+            curl -f http://localhost:4001/ || echo "앱 연결 실패"
 
             echo "🗑️ 불필요한 이미지 정리..."
             docker image prune -f
