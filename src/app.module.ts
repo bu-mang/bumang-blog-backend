@@ -10,6 +10,7 @@ import { TagsModule } from './tags/tags.module';
 import { S3Module } from './s3/s3.module';
 import { AppDataSource } from './data-source';
 import { TasksModule } from './tasks/tasks.module';
+import { UserGroupsModule } from './user-groups/user-groups.module';
 
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
@@ -43,6 +44,7 @@ import { LoggingInterceptor } from './interceptors/logging.interceptor';
     TagsModule,
     S3Module,
     TasksModule,
+    UserGroupsModule,
     AppLoggerModule,
     MetricsModule,
   ],

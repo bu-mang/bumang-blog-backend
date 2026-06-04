@@ -9,6 +9,7 @@ import { CategoryEntity } from 'src/categories/entities/category.entity';
 import { CommentsModule } from 'src/comments/comments.module';
 import { GroupEntity } from 'src/categories/entities/group.entity';
 import { AppLoggerModule } from 'src/logger/app-logger.module';
+import { UserGroupsModule } from 'src/user-groups/user-groups.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { AppLoggerModule } from 'src/logger/app-logger.module';
     ]),
     forwardRef(() => CommentsModule),
     AppLoggerModule,
+    UserGroupsModule,
   ],
   controllers: [PostsController],
   providers: [PostsService],

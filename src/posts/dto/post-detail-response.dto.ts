@@ -51,6 +51,22 @@ export class PostDetailResponseDto {
   @ApiProperty({ enum: RolesEnum, nullable: true })
   readPermission: RolesEnum | null;
 
+  @ApiProperty({ type: [Number] })
+  defaultAudienceGroupIds: number[];
+
+  @ApiProperty({
+    description:
+      'block.id → groupId[]. 작성자/owner에게만 노출 (편집 페이지에서 필요).',
+    required: false,
+  })
+  blockAudienceMap?: Record<string, number[]>;
+
+  @ApiProperty({
+    type: [String],
+    description: '마스킹된 블록의 BlockNote id 목록 (프론트에서 블러 적용용)',
+  })
+  maskedBlockIds: string[];
+
   @ApiProperty()
   views: number;
 
@@ -80,11 +96,18 @@ export class PostDetailResponseDto {
   @ApiProperty()
   thumbnailUrl: string;
 
-  static fromEntity(post: PostEntity): PostDetailResponseDto {
+  static fromEntity(
+    post: PostEntity,
+    overrides?: {
+      content?: string;
+      includeBlockAudienceMap?: boolean;
+      maskedBlockIds?: string[];
+    },
+  ): PostDetailResponseDto {
     const dto = new PostDetailResponseDto();
     dto.id = post.id;
     dto.title = post.title;
-    dto.content = post.content;
+    dto.content = overrides?.content ?? post.content;
     dto.previewText = post.previewText;
 
     dto.createdAt = post.createdAt;
@@ -92,6 +115,11 @@ export class PostDetailResponseDto {
 
     dto.authorNickname = post.author?.nickname ?? 'unknown';
     dto.readPermission = post.readPermission;
+    dto.defaultAudienceGroupIds = post.defaultAudienceGroupIds ?? [];
+    if (overrides?.includeBlockAudienceMap) {
+      dto.blockAudienceMap = post.blockAudienceMap ?? {};
+    }
+    dto.maskedBlockIds = overrides?.maskedBlockIds ?? [];
     dto.thumbnailUrl = post.thumbnailUrl;
 
     dto.views = post.view;

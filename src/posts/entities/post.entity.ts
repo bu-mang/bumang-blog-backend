@@ -69,6 +69,15 @@ export class PostEntity {
   })
   readPermission: RolesEnum | null;
 
+  // 블록별 audience 매핑이 없을 때 fallback. 빈 배열 = 그룹 필터 없음(공개).
+  @Column({ type: 'jsonb', default: () => "'[]'::jsonb" })
+  defaultAudienceGroupIds: number[];
+
+  // BlockNote block.id → audience group id 배열. 키가 없으면 글 default를 따른다.
+  // 빈 배열은 명시적 공개(글 default가 비공개여도 이 블록은 공개).
+  @Column({ type: 'jsonb', default: () => "'{}'::jsonb" })
+  blockAudienceMap: Record<string, number[]>;
+
   @ManyToOne(() => CategoryEntity, (category) => category.posts, {
     onDelete: 'SET NULL', // ✅ 이쪽에 넣어야 DB에서 제대로 동작
     nullable: true,

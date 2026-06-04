@@ -21,6 +21,20 @@ import { DeletePostResponseDto } from './dto/delete-post-response.dto';
 import { canReadPost } from './util/canReadPost';
 import { CurrentUserDto } from 'src/common/dto/current-user.dto';
 import { canCreateOrUpdatePost } from './util/canCreateOrUpdatePost';
+import { maskContent } from './util/maskContent';
+import { UserGroupsService } from 'src/user-groups/user-groups.service';
+
+// defaultAudience + blockAudienceMap에서 참조된 그룹 id를 모아 중복 제거
+function collectGroupIds(
+  defaultAudience: number[],
+  blockMap: Record<string, number[]>,
+): number[] {
+  const set = new Set<number>(defaultAudience);
+  for (const arr of Object.values(blockMap)) {
+    for (const id of arr) set.add(id);
+  }
+  return Array.from(set);
+}
 import { PostDetailResponseDto } from './dto/post-detail-response.dto';
 import { getPermissionCondition } from './util/getPermissionCondition';
 import { PostTypeEnum } from './const/type.const';
@@ -47,6 +61,8 @@ export class PostsService {
     private readonly categoryRepo: Repository<CategoryEntity>,
 
     private readonly appLoggerService: AppLoggerService,
+
+    private readonly userGroupsService: UserGroupsService,
   ) {}
 
   // 1. 포스트 모두 조회
@@ -154,6 +170,8 @@ export class PostsService {
       readPermission,
       previewText,
       thumbnailUrl,
+      defaultAudienceGroupIds,
+      blockAudienceMap,
     } = createPostDto;
 
     // 멱등 처리: 같은 멱등 키로 이미 생성된 글이 있으면 새로 만들지 않고 그대로 반환한다.
@@ -237,6 +255,16 @@ export class PostsService {
       }
     }
 
+    const normalizedDefaultAudience = defaultAudienceGroupIds ?? [];
+    const normalizedBlockAudience = blockAudienceMap ?? {};
+    const allGroupIds = collectGroupIds(
+      normalizedDefaultAudience,
+      normalizedBlockAudience,
+    );
+    if (allGroupIds.length > 0) {
+      await this.userGroupsService.assertGroupsExist(allGroupIds);
+    }
+
     const post = this.postRepo.create({
       title,
       content,
@@ -249,6 +277,8 @@ export class PostsService {
       tags: validTags,
       comments: [],
       clientRequestId: clientRequestId ?? null,
+      defaultAudienceGroupIds: normalizedDefaultAudience,
+      blockAudienceMap: normalizedBlockAudience,
     });
 
     try {
@@ -320,7 +350,32 @@ export class PostsService {
       post.title,
     );
 
-    return PostDetailResponseDto.fromEntity(post);
+    // 작성자 본인 또는 OWNER는 마스킹 건너뛰고 audience map까지 노출 (편집 페이지용)
+    const isAuthorOrOwner =
+      !!currentUser &&
+      (currentUser.role === RolesEnum.OWNER ||
+        post.author?.id === currentUser.userId);
+
+    if (isAuthorOrOwner) {
+      return PostDetailResponseDto.fromEntity(post, {
+        includeBlockAudienceMap: true,
+      });
+    }
+
+    const viewerGroupIds = await this.userGroupsService.getViewerGroupIds(
+      currentUser?.userId ?? null,
+    );
+    const { maskedJson, maskedBlockIds } = maskContent(
+      post.content,
+      viewerGroupIds,
+      post.blockAudienceMap ?? {},
+      post.defaultAudienceGroupIds ?? [],
+    );
+
+    return PostDetailResponseDto.fromEntity(post, {
+      content: maskedJson,
+      maskedBlockIds,
+    });
   }
 
   // 6. (내부용RAW) 특정 포스트 상세 조회
@@ -365,6 +420,8 @@ export class PostsService {
       tagIds,
       readPermission,
       thumbnailUrl,
+      defaultAudienceGroupIds,
+      blockAudienceMap,
     } = dto;
 
     // 아이디로 조회
@@ -473,6 +530,25 @@ export class PostsService {
 
     if (typeof thumbnailUrl === 'string') {
       existingPost.thumbnailUrl = thumbnailUrl;
+    }
+
+    const nextDefaultAudience =
+      defaultAudienceGroupIds ?? existingPost.defaultAudienceGroupIds ?? [];
+    const nextBlockAudience =
+      blockAudienceMap ?? existingPost.blockAudienceMap ?? {};
+    if (
+      defaultAudienceGroupIds !== undefined ||
+      blockAudienceMap !== undefined
+    ) {
+      const allGroupIds = collectGroupIds(
+        nextDefaultAudience,
+        nextBlockAudience,
+      );
+      if (allGroupIds.length > 0) {
+        await this.userGroupsService.assertGroupsExist(allGroupIds);
+      }
+      existingPost.defaultAudienceGroupIds = nextDefaultAudience;
+      existingPost.blockAudienceMap = nextBlockAudience;
     }
 
     await this.postRepo.save(existingPost);
