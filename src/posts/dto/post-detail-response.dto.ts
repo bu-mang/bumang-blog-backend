@@ -51,9 +51,6 @@ export class PostDetailResponseDto {
   @ApiProperty({ enum: RolesEnum, nullable: true })
   readPermission: RolesEnum | null;
 
-  @ApiProperty({ type: [Number] })
-  defaultAudienceGroupIds: number[];
-
   @ApiProperty({
     description:
       'block.id → groupId[]. 작성자/owner에게만 노출 (편집 페이지에서 필요).',
@@ -115,7 +112,6 @@ export class PostDetailResponseDto {
 
     dto.authorNickname = post.author?.nickname ?? 'unknown';
     dto.readPermission = post.readPermission;
-    dto.defaultAudienceGroupIds = post.defaultAudienceGroupIds ?? [];
     if (overrides?.includeBlockAudienceMap) {
       dto.blockAudienceMap = post.blockAudienceMap ?? {};
     }

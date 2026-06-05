@@ -24,12 +24,9 @@ import { canCreateOrUpdatePost } from './util/canCreateOrUpdatePost';
 import { maskContent } from './util/maskContent';
 import { UserGroupsService } from 'src/user-groups/user-groups.service';
 
-// defaultAudience + blockAudienceMap에서 참조된 그룹 id를 모아 중복 제거
-function collectGroupIds(
-  defaultAudience: number[],
-  blockMap: Record<string, number[]>,
-): number[] {
-  const set = new Set<number>(defaultAudience);
+// blockAudienceMap에서 참조된 그룹 id를 모아 중복 제거
+function collectGroupIds(blockMap: Record<string, number[]>): number[] {
+  const set = new Set<number>();
   for (const arr of Object.values(blockMap)) {
     for (const id of arr) set.add(id);
   }
@@ -170,7 +167,6 @@ export class PostsService {
       readPermission,
       previewText,
       thumbnailUrl,
-      defaultAudienceGroupIds,
       blockAudienceMap,
     } = createPostDto;
 
@@ -255,12 +251,8 @@ export class PostsService {
       }
     }
 
-    const normalizedDefaultAudience = defaultAudienceGroupIds ?? [];
     const normalizedBlockAudience = blockAudienceMap ?? {};
-    const allGroupIds = collectGroupIds(
-      normalizedDefaultAudience,
-      normalizedBlockAudience,
-    );
+    const allGroupIds = collectGroupIds(normalizedBlockAudience);
     if (allGroupIds.length > 0) {
       await this.userGroupsService.assertGroupsExist(allGroupIds);
     }
@@ -277,7 +269,6 @@ export class PostsService {
       tags: validTags,
       comments: [],
       clientRequestId: clientRequestId ?? null,
-      defaultAudienceGroupIds: normalizedDefaultAudience,
       blockAudienceMap: normalizedBlockAudience,
     });
 
@@ -369,7 +360,6 @@ export class PostsService {
       post.content,
       viewerGroupIds,
       post.blockAudienceMap ?? {},
-      post.defaultAudienceGroupIds ?? [],
     );
 
     return PostDetailResponseDto.fromEntity(post, {
@@ -420,7 +410,6 @@ export class PostsService {
       tagIds,
       readPermission,
       thumbnailUrl,
-      defaultAudienceGroupIds,
       blockAudienceMap,
     } = dto;
 
@@ -532,23 +521,12 @@ export class PostsService {
       existingPost.thumbnailUrl = thumbnailUrl;
     }
 
-    const nextDefaultAudience =
-      defaultAudienceGroupIds ?? existingPost.defaultAudienceGroupIds ?? [];
-    const nextBlockAudience =
-      blockAudienceMap ?? existingPost.blockAudienceMap ?? {};
-    if (
-      defaultAudienceGroupIds !== undefined ||
-      blockAudienceMap !== undefined
-    ) {
-      const allGroupIds = collectGroupIds(
-        nextDefaultAudience,
-        nextBlockAudience,
-      );
+    if (blockAudienceMap !== undefined) {
+      const allGroupIds = collectGroupIds(blockAudienceMap);
       if (allGroupIds.length > 0) {
         await this.userGroupsService.assertGroupsExist(allGroupIds);
       }
-      existingPost.defaultAudienceGroupIds = nextDefaultAudience;
-      existingPost.blockAudienceMap = nextBlockAudience;
+      existingPost.blockAudienceMap = blockAudienceMap;
     }
 
     await this.postRepo.save(existingPost);

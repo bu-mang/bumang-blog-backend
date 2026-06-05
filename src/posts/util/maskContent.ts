@@ -30,7 +30,6 @@ function intersects(viewer: Set<number>, required: number[]): boolean {
 function resolveRequired(
   block: Block,
   blockAudienceMap: Record<string, number[]>,
-  postDefault: number[],
 ): number[] {
   if (
     block.id &&
@@ -38,7 +37,7 @@ function resolveRequired(
   ) {
     return blockAudienceMap[block.id] ?? [];
   }
-  return postDefault;
+  return [];
 }
 
 /**
@@ -108,10 +107,9 @@ function processBlock(
   block: Block,
   viewerGroupIds: Set<number>,
   blockAudienceMap: Record<string, number[]>,
-  postDefault: number[],
   maskedIds: string[],
 ): { masked: Block } {
-  const required = resolveRequired(block, blockAudienceMap, postDefault);
+  const required = resolveRequired(block, blockAudienceMap);
   const visible =
     !required ||
     required.length === 0 ||
@@ -121,13 +119,8 @@ function processBlock(
     if (block.children?.length) {
       const maskedChildren = block.children.map(
         (child) =>
-          processBlock(
-            child,
-            viewerGroupIds,
-            blockAudienceMap,
-            postDefault,
-            maskedIds,
-          ).masked,
+          processBlock(child, viewerGroupIds, blockAudienceMap, maskedIds)
+            .masked,
       );
       return { masked: { ...block, children: maskedChildren } };
     }
@@ -147,7 +140,6 @@ export function maskContent(
   contentJson: string,
   viewerGroupIds: Set<number>,
   blockAudienceMap: Record<string, number[]> = {},
-  postDefaultGroupIds: number[] = [],
 ): {
   maskedJson: string;
   maskedBlockIds: string[];
@@ -169,14 +161,9 @@ export function maskContent(
 
   const blocks = parsed as Block[];
   const maskedIds: string[] = [];
-  const masked = blocks.map((block) =>
-    processBlock(
-      block,
-      viewerGroupIds,
-      blockAudienceMap,
-      postDefaultGroupIds,
-      maskedIds,
-    ).masked,
+  const masked = blocks.map(
+    (block) =>
+      processBlock(block, viewerGroupIds, blockAudienceMap, maskedIds).masked,
   );
 
   return {

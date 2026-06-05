@@ -53,20 +53,9 @@ export class CreatePostDto {
   readPermission: RolesEnum | null;
 
   @ApiProperty({
-    type: [Number],
     required: false,
     description:
-      '글 단위 기본 audience. 블록 단위 매핑이 없으면 이 값을 따른다. 빈 배열이면 그룹 필터 없음(읽기 권한 통과한 모두에게 노출).',
-  })
-  @IsOptional()
-  @IsArray()
-  @IsNumber({}, { each: true })
-  defaultAudienceGroupIds?: number[];
-
-  @ApiProperty({
-    required: false,
-    description:
-      'BlockNote block.id → groupId[] 매핑. 빈 배열은 명시적 공개, 키 없으면 글 default 적용.',
+      'BlockNote block.id → groupId[] 매핑. 키 없거나 빈 배열이면 공개.',
   })
   @IsOptional()
   @IsObject()
