@@ -389,9 +389,9 @@ export class PostsService {
       blockMap,
     );
 
-    // viewer: 자기가 마스킹당한 블록의 audience 라벨만 노출 → 가려진 자리에 "🔒 친구" 표시 가능
-    const maskedSet = new Set(maskedBlockIds);
-    const blockAudienceLabels = await buildLabels((id) => maskedSet.has(id));
+    // viewer: 마스킹 여부와 무관하게 audience가 지정된 모든 블록에 라벨 노출
+    // → 권한이 있어 내용을 볼 수 있는 viewer에게도 "🔒 친구" 마커를 표시
+    const blockAudienceLabels = await buildLabels(() => true);
 
     return PostDetailResponseDto.fromEntity(post, {
       content: maskedJson,
