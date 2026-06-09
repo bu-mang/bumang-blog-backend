@@ -29,6 +29,23 @@ export class UserGroupsService {
     });
   }
 
+  /**
+   * 주어진 그룹 id들의 (id → name) 매핑을 반환.
+   * post detail 응답에서 audience 라벨을 미리 풀어 내려보낼 때 사용.
+   * - viewer가 user-groups 엔드포인트(OWNER 전용)에 접근할 수 없어도
+   *   post 응답으로 그룹명을 받게 하기 위함.
+   */
+  async findNamesByIds(ids: number[]): Promise<Map<number, string>> {
+    if (ids.length === 0) return new Map();
+    const groups = await this.groupRepo.find({
+      where: { id: In(ids) },
+      select: ['id', 'name'],
+    });
+    const m = new Map<number, string>();
+    for (const g of groups) m.set(g.id, g.name);
+    return m;
+  }
+
   async findOne(id: number) {
     const group = await this.groupRepo.findOne({
       where: { id },

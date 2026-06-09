@@ -347,9 +347,36 @@ export class PostsService {
       (currentUser.role === RolesEnum.OWNER ||
         post.author?.id === currentUser.userId);
 
+    const blockMap = post.blockAudienceMap ?? {};
+
+    // 라벨 빌더: 주어진 block→ids 매핑에서 참조 그룹 id 모아 한 번에 이름 조회 후
+    // block → names[] 형태로 변환. 그룹이 삭제됐거나 이름 못 찾으면 해당 id는 스킵.
+    const buildLabels = async (
+      pickFor: (blockId: string) => boolean,
+    ): Promise<Record<string, string[]>> => {
+      const filtered: Record<string, number[]> = {};
+      for (const [id, ids] of Object.entries(blockMap)) {
+        if (ids?.length > 0 && pickFor(id)) filtered[id] = ids;
+      }
+      const allIds = collectGroupIds(filtered);
+      if (allIds.length === 0) return {};
+      const nameMap = await this.userGroupsService.findNamesByIds(allIds);
+      const out: Record<string, string[]> = {};
+      for (const [id, ids] of Object.entries(filtered)) {
+        const names = ids
+          .map((g) => nameMap.get(g))
+          .filter((n): n is string => !!n);
+        if (names.length > 0) out[id] = names;
+      }
+      return out;
+    };
+
     if (isAuthorOrOwner) {
+      // owner: 전체 audience-set 블록에 대해 라벨 노출 + 편집용 ID 맵도 함께
+      const blockAudienceLabels = await buildLabels(() => true);
       return PostDetailResponseDto.fromEntity(post, {
         includeBlockAudienceMap: true,
+        blockAudienceLabels,
       });
     }
 
@@ -359,12 +386,17 @@ export class PostsService {
     const { maskedJson, maskedBlockIds } = maskContent(
       post.content,
       viewerGroupIds,
-      post.blockAudienceMap ?? {},
+      blockMap,
     );
+
+    // viewer: 자기가 마스킹당한 블록의 audience 라벨만 노출 → 가려진 자리에 "🔒 친구" 표시 가능
+    const maskedSet = new Set(maskedBlockIds);
+    const blockAudienceLabels = await buildLabels((id) => maskedSet.has(id));
 
     return PostDetailResponseDto.fromEntity(post, {
       content: maskedJson,
       maskedBlockIds,
+      blockAudienceLabels,
     });
   }
 

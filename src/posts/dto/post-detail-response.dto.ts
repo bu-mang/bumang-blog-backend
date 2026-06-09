@@ -59,6 +59,14 @@ export class PostDetailResponseDto {
   blockAudienceMap?: Record<string, number[]>;
 
   @ApiProperty({
+    description:
+      'block.id → group name[]. 모든 viewer에게 노출 (블러 옆 자물쇠 라벨용). ' +
+      'owner는 전체 블록, 비-owner는 본인이 마스킹당한 블록만 포함된다.',
+    required: false,
+  })
+  blockAudienceLabels?: Record<string, string[]>;
+
+  @ApiProperty({
     type: [String],
     description: '마스킹된 블록의 BlockNote id 목록 (프론트에서 블러 적용용)',
   })
@@ -99,6 +107,7 @@ export class PostDetailResponseDto {
       content?: string;
       includeBlockAudienceMap?: boolean;
       maskedBlockIds?: string[];
+      blockAudienceLabels?: Record<string, string[]>;
     },
   ): PostDetailResponseDto {
     const dto = new PostDetailResponseDto();
@@ -114,6 +123,9 @@ export class PostDetailResponseDto {
     dto.readPermission = post.readPermission;
     if (overrides?.includeBlockAudienceMap) {
       dto.blockAudienceMap = post.blockAudienceMap ?? {};
+    }
+    if (overrides?.blockAudienceLabels) {
+      dto.blockAudienceLabels = overrides.blockAudienceLabels;
     }
     dto.maskedBlockIds = overrides?.maskedBlockIds ?? [];
     dto.thumbnailUrl = post.thumbnailUrl;
