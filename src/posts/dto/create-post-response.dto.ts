@@ -13,7 +13,7 @@ export class CreatePostResponseDto {
   title: string;
 
   @ApiProperty({
-    example: 'user',
+    example: 'guest',
     enum: RolesEnum,
     nullable: true,
   })

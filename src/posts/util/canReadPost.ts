@@ -18,9 +18,9 @@ export function canReadPost(
 
   // 역할 계층 구조: 높은 숫자 = 높은 권한
   const roleHierarchy = {
-    [RolesEnum.OWNER]: 3,
-    [RolesEnum.ADMIN]: 2,
-    [RolesEnum.USER]: 1,
+    [RolesEnum.HOST]: 3,
+    [RolesEnum.MEMBER]: 2,
+    [RolesEnum.GUEST]: 1,
   };
 
   // 사용자의 티어가 포스트 권한의 티어보다 크거나 같으면 읽기 가능

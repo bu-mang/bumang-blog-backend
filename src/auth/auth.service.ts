@@ -38,7 +38,7 @@ export class AuthService {
     const newUser = await this.usersService.createUser({
       email,
       nickname,
-      role: RolesEnum.USER,
+      role: RolesEnum.GUEST,
       password,
     });
 

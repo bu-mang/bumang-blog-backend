@@ -23,7 +23,7 @@ import { AddMemberDto } from './dto/add-member.dto';
 @ApiBearerAuth()
 @ApiTags('UserGroup')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RolesEnum.OWNER)
+@Roles(RolesEnum.HOST)
 @Controller('user-groups')
 export class UserGroupsController {
   constructor(private readonly service: UserGroupsService) {}

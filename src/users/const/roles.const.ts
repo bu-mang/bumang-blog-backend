@@ -1,5 +1,5 @@
 export enum RolesEnum {
-  OWNER = 'owner',
-  ADMIN = 'admin', // 관리자
-  USER = 'user',
+  HOST = 'host',
+  MEMBER = 'member', // 관리자
+  GUEST = 'guest',
 }

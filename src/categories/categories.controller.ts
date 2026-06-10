@@ -64,7 +64,7 @@ export class CategoriesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.MEMBER)
   @Post('groups')
   @ApiOperation({
     summary: '새로운 그룹 생성 [ADMIN]',
@@ -76,7 +76,7 @@ export class CategoriesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.MEMBER)
   @Patch('groups')
   @ApiOperation({
     summary: '특정 그룹 업데이트 [ADMIN]',
@@ -91,7 +91,7 @@ export class CategoriesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.MEMBER)
   @Delete('groups/:id')
   @HttpCode(204)
   @ApiOperation({
@@ -117,7 +117,7 @@ export class CategoriesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.MEMBER)
   @Post() // 201 created
   @ApiOperation({
     summary: '새로운 카테고리 생성 [ADMIN]',
@@ -135,7 +135,7 @@ export class CategoriesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.MEMBER)
   @Patch(':id')
   @ApiOperation({
     summary: '특정 카테고리 수정 [ADMIN]',
@@ -154,7 +154,7 @@ export class CategoriesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.MEMBER)
   @Delete(':id')
   @HttpCode(204)
   @ApiOperation({

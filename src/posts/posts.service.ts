@@ -193,9 +193,9 @@ export class PostsService {
     }
 
     // 작성 권한 체크
-    if (user.role === RolesEnum.USER) {
+    if (user.role === RolesEnum.GUEST) {
       // USER: null 또는 user 권한으로만 작성 가능
-      if (readPermission && readPermission !== RolesEnum.USER) {
+      if (readPermission && readPermission !== RolesEnum.GUEST) {
         this.appLoggerService.logPost(
           'post_creation_permission_denied',
           undefined,
@@ -205,9 +205,9 @@ export class PostsService {
           `Users can only create public or user-level posts.`,
         );
       }
-    } else if (user.role === RolesEnum.ADMIN) {
+    } else if (user.role === RolesEnum.MEMBER) {
       // ADMIN: null, user, admin 권한으로만 작성 가능 (owner 불가)
-      if (readPermission === RolesEnum.OWNER) {
+      if (readPermission === RolesEnum.HOST) {
         this.appLoggerService.logPost(
           'post_creation_permission_denied',
           undefined,
@@ -344,7 +344,7 @@ export class PostsService {
     // 작성자 본인 또는 OWNER는 마스킹 건너뛰고 audience map까지 노출 (편집 페이지용)
     const isAuthorOrOwner =
       !!currentUser &&
-      (currentUser.role === RolesEnum.OWNER ||
+      (currentUser.role === RolesEnum.HOST ||
         post.author?.id === currentUser.userId);
 
     const blockMap = post.blockAudienceMap ?? {};
@@ -530,16 +530,16 @@ export class PostsService {
 
     // 수정 시 권한 체크
     if (readPermission !== undefined) {
-      if (currentUser.role === RolesEnum.USER) {
+      if (currentUser.role === RolesEnum.GUEST) {
         // USER: null 또는 user 권한으로만 수정 가능
-        if (readPermission && readPermission !== RolesEnum.USER) {
+        if (readPermission && readPermission !== RolesEnum.GUEST) {
           throw new ForbiddenException(
             'Users can only create public or user-level posts.',
           );
         }
-      } else if (currentUser.role === RolesEnum.ADMIN) {
+      } else if (currentUser.role === RolesEnum.MEMBER) {
         // ADMIN: null, user, admin 권한으로만 수정 가능 (owner 불가)
-        if (readPermission === RolesEnum.OWNER) {
+        if (readPermission === RolesEnum.HOST) {
           throw new ForbiddenException(
             'Admins cannot create owner-only posts.',
           );
@@ -718,7 +718,7 @@ export class PostsService {
       .createQueryBuilder('post')
       .leftJoin('post.author', 'author')
       .delete()
-      .where('author.role = :role', { role: RolesEnum.USER })
+      .where('author.role = :role', { role: RolesEnum.GUEST })
       .execute();
 
     return result.affected ?? 0;

@@ -26,7 +26,7 @@ export class TagsController {
   constructor(private readonly tagsService: TagsService) {}
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.MEMBER)
   @Post()
   @ApiOperation({ summary: '태그 생성', description: '태그를 생성합니다.' })
   async create(@Body() createTagDto: CreateTagDto) {
@@ -52,7 +52,7 @@ export class TagsController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.MEMBER)
   @Patch(':id')
   @ApiOperation({
     summary: '특정 태그 수정',
@@ -66,7 +66,7 @@ export class TagsController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.MEMBER)
   @Delete(':id')
   @HttpCode(204)
   @ApiOperation({

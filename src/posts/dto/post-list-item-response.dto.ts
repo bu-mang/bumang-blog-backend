@@ -29,14 +29,14 @@ export class PostListItemResponseDto {
   author: string;
 
   @ApiProperty({
-    example: 'user',
+    example: 'guest',
     enum: RolesEnum,
     nullable: true,
   })
   authorRole: RolesEnum;
 
   @ApiProperty({
-    example: 'user',
+    example: 'guest',
     enum: RolesEnum,
     nullable: true,
   })

@@ -45,9 +45,9 @@ export class RolesGuard implements CanActivate {
 
     // 역할 계층 구조 정의: 높은 숫자 = 높은 권한
     const roleHierarchy = {
-      [RolesEnum.OWNER]: 3,
-      [RolesEnum.ADMIN]: 2,
-      [RolesEnum.USER]: 1,
+      [RolesEnum.HOST]: 3,
+      [RolesEnum.MEMBER]: 2,
+      [RolesEnum.GUEST]: 1,
     };
 
     // 사용자의 권한 레벨

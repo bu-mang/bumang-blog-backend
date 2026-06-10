@@ -13,7 +13,7 @@ export class UpdatePostResponseDto {
   title: string;
 
   @ApiProperty({
-    example: 'user',
+    example: 'guest',
     enum: RolesEnum,
   })
   readPermission: RolesEnum;

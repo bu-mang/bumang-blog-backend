@@ -68,7 +68,7 @@ export class PostsController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.ADMIN, RolesEnum.USER)
+  @Roles(RolesEnum.MEMBER, RolesEnum.GUEST)
   @ApiOperation({
     summary: '게시글 생성',
     description: 'DB에 게시글을 저장합니다.',

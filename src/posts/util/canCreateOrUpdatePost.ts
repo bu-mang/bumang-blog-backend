@@ -10,7 +10,7 @@ export function canCreateOrUpdatePost(
   }
 
   // OWNER는 모든 글 수정/삭제 가능
-  if (userRole === RolesEnum.OWNER) {
+  if (userRole === RolesEnum.HOST) {
     return true;
   }
 
@@ -20,9 +20,9 @@ export function canCreateOrUpdatePost(
   }
 
   const roleHierarchy = {
-    [RolesEnum.OWNER]: 3,
-    [RolesEnum.ADMIN]: 2,
-    [RolesEnum.USER]: 1,
+    [RolesEnum.HOST]: 3,
+    [RolesEnum.MEMBER]: 2,
+    [RolesEnum.GUEST]: 1,
   };
 
   // 사용자의 티어가 포스트 권한의 티어보다 크거나 같아야 수정/삭제 가능

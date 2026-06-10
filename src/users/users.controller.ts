@@ -75,7 +75,7 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.MEMBER)
   @Post() // 201 created
   @ApiOperation({
     summary: '새로운 유저 생성',
@@ -89,7 +89,7 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard, RolesGuard, IsOwnerGuard)
   @IsOwner('user')
-  @Roles(RolesEnum.ADMIN, RolesEnum.USER)
+  @Roles(RolesEnum.MEMBER, RolesEnum.GUEST)
   @Patch(':id')
   @ApiOperation({
     summary: '특정 유저 수정',
@@ -104,7 +104,7 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.ADMIN)
+  @Roles(RolesEnum.MEMBER)
   @HttpCode(204) // "성공했으면 됐지, 딱히 줄 건 없어" → 204. 바디는 따로 없어야 함.
   @Delete(':id')
   @ApiOperation({
