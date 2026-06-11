@@ -15,6 +15,7 @@ import { UserGroupsModule } from './user-groups/user-groups.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './logger/winston.config';
@@ -26,6 +27,8 @@ import { LoggingInterceptor } from './interceptors/logging.interceptor';
   imports: [
     // cron작업용 세팅
     ScheduleModule.forRoot(),
+    // 전역 기본 레이트리밋(느슨). 강한 제한은 auth 컨트롤러에서 @Throttle로 별도 적용
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,

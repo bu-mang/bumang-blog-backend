@@ -22,6 +22,7 @@ import {
   REFRESH_TOKEN_MAX_AGE,
 } from 'src/common/constant/cookieOption';
 import { RequestWithUser } from 'types/user-request.interface';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 
 @ApiBearerAuth()
 @ApiTags('Auth') // Swagger UI 그룹 이름
@@ -30,6 +31,8 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   // 🟢 회원가입
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60000, limit: 3 } }) // 무차별 가입 방지: 분당 3회
   @Post('signup')
   @ApiOperation({ summary: '회원가입', description: '새로운 유저 회원가입' })
   async signup(@Body() dto: SignupAuthDto) {
@@ -37,6 +40,8 @@ export class AuthController {
   }
 
   // 🔵 로그인 (Access + Refresh Token 발급, 204)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60000, limit: 5 } }) // 무차별 대입 방지: 분당 5회
   @Post('login')
   @ApiOperation({ summary: '로그인', description: '서비스에 로그인합니다.' })
   async login(
