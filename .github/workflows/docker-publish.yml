@@ -40,7 +40,10 @@ jobs:
           script: |
             set -e
             cd /home/ec2-user/bumang-blog-backend
-            git pull
+            # origin에 강제로 맞춤 (히스토리 재작성/force-push 후에도 안전).
+            # gitignore된 .env.production 등 미추적 파일은 보존됨
+            git fetch origin
+            git reset --hard origin/main
 
             docker pull ${{ secrets.DOCKER_USERNAME }}/bumang-blog-backend:latest
 
