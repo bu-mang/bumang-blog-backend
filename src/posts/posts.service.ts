@@ -605,7 +605,8 @@ export class PostsService {
       .leftJoin('category.group', 'group')
       .where('post.id != :id', { id: postId }) // 자기 제외
       .andWhere('post.deletedAt IS NULL') // soft-deleted 글 제외
-      .andWhere('post.readPermission IS NULL') // 🔒 퍼블릭 제한 등 조건 넣어도 됨. => readPermission null인 것만 OK!
+      // readPermission 필터는 두지 않는다 — 리스트(findPosts)와 동일하게 제목/미리보기/썸네일은
+      // 권한과 무관하게 내려주고, 본문 접근은 상세 조회(findPostDetail)의 canReadPost에서 막는다.
       .select('post.id', 'id') // id라는 컬럼으로 post.id 가져옴
       .addSelect('post.title', 'title') // title이라는 컬럼으로 post.title 가져옴
       .addSelect('post.previewText', 'previewText') // previewText이라는 컬럼으로 post.previewText 가져옴
@@ -616,9 +617,14 @@ export class PostsService {
       .addSelect('post.author', 'author')
       .addSelect('post.readPermission', 'readPermission')
       .addSelect(
-        // 유사도 점수 계산: 태그 겹친 수 * 10 + 카테고리 일치 시 5점 + 그룹 일치 시 1점
+        // 유사도 점수 계산: "타겟 글과 겹치는 태그 수" * 10 + 카테고리 일치 시 5점 + 그룹 일치 시 1점
+        // 태그가 없으면 IN () 이 깨지므로, 겹치는 태그 점수를 0으로 고정한다.
         `
-        COUNT(DISTINCT tag.id) * 10 +
+        ${
+          tagIds.length
+            ? 'COUNT(DISTINCT CASE WHEN tag.id IN (:...tagIds) THEN tag.id END) * 10'
+            : '0'
+        } +
         CASE WHEN category.id = :categoryId THEN 5 ELSE 0 END +
         CASE WHEN group.id = :groupId THEN 1 ELSE 0 END
         `, // DISTINCT는 중복을 허용하지 않는다는 뜻.
@@ -633,9 +639,11 @@ export class PostsService {
 
     const relatedPosts = await query.getRawMany();
 
+    // score DESC로 정렬돼 있어 0점 글은 항상 맨 아래 → limit(3) 뒤에 걸러도 유효 글을 놓치지 않는다.
     return relatedPosts
-      .sort((a, b) => b.score - a.score)
-      .map((post) => ({ ...post, score: Number(post.score) }));
+      .map((post) => ({ ...post, score: Number(post.score) }))
+      .filter((post) => post.score > 0)
+      .sort((a, b) => b.score - a.score);
   }
 
   async findAdjacentPosts(postId: number, currentUser: CurrentUserDto | null) {
