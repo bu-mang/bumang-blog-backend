@@ -69,3 +69,6 @@ certbot/
 # SSH PEM KEY
 key-of-bumang-blog.pem
 
+# CPF 플러그인 세션 아티팩트
+.cpf/
+
