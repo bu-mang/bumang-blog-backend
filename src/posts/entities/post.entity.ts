@@ -34,7 +34,10 @@ export class PostEntity {
   @Column({ type: 'text', nullable: true })
   previewText: string;
 
-  @Column({ type: 'text', nullable: true })
+  // 프로덕션 실제 컬럼은 character varying(varchar)로 생성돼 있다.
+  // (마이그레이션 없이 옛 @Column() 추론으로 만들어진 잔재.)
+  // 엔티티를 varchar로 맞춰야 dev의 synchronize가 컬럼을 재생성하지 않는다.
+  @Column({ type: 'varchar', nullable: true })
   thumbnailUrl: string;
 
   // 클라이언트가 생성 요청마다 부여하는 멱등 키.
