@@ -1,5 +1,13 @@
 version: '3.8'
 
+# 컨테이너 stdout 로그가 무한 증식해 디스크를 채우는 것을 막는 공통 로테이션 정책.
+# (2026-07 프론트 7.6G·nginx 1.6G 로그로 루트 디스크 100% 포화 → 502 장애가 있었음)
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
 services:
   nginx:
     image: nginx:alpine
@@ -15,6 +23,7 @@ services:
       - app
       - frontend
     restart: unless-stopped
+    logging: *default-logging
 
   certbot:
     image: certbot/certbot
@@ -26,6 +35,7 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    logging: *default-logging
 
   # prometheus:
   #   image: prom/prometheus:latest
@@ -118,6 +128,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    logging: *default-logging
     deploy:
       resources:
         limits:
@@ -137,6 +148,7 @@ services:
       - .env.production
     environment:
       - NODE_ENV=production
+    logging: *default-logging
     deploy:
       resources:
         limits:
@@ -157,6 +169,7 @@ services:
       - NODE_ENV=production
     depends_on:
       - app
+    logging: *default-logging
     deploy:
       resources:
         limits:
