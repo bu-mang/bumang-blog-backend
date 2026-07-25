@@ -37,12 +37,6 @@ async function bootstrap() {
     ),
   );
 
-  app.use((req, res, next) => {
-    console.log('요청 수신됨:', req.method, req.url);
-    console.log('req.cookies: ', req.cookies);
-    next();
-  });
-
   // Swagger 설정
   const config = new DocumentBuilder()
     .setTitle('BUMANG BLOG API')
