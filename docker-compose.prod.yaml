@@ -173,7 +173,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 150M
+          # Next.js SSR이 150M 한도에서 OOM 킬 나던 이력 → 상향(호스트 여유 + swap 2G 확보 후).
+          memory: 384M
         reservations:
           memory: 75M
 
