@@ -10,6 +10,9 @@ import * as bcrypt from 'bcrypt';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { RolesEnum } from 'src/users/const/roles.const';
 import { AppLoggerService } from 'src/logger/app-logger.service';
+import { AuditService } from 'src/audit/audit.service';
+import { RequestMeta } from 'src/common/util/request-meta.util';
+import { UserEntity } from 'src/users/entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -17,6 +20,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly appLoggerService: AppLoggerService,
+    private readonly auditService: AuditService,
   ) {}
 
   async signup(dto: SignupAuthDto) {
@@ -46,18 +50,33 @@ export class AuthService {
   }
 
   // 🔵 로그인 (Access + Refresh Token 발급)
-  async login(dto: LoginAuthDto) {
+  // meta: 감사 로그용 요청 정보(IP/국가/UA). 컨트롤러에서 Cloudflare 헤더로 추출해 전달.
+  async login(dto: LoginAuthDto, meta?: RequestMeta) {
     const { email, password } = dto;
+    const m: RequestMeta = meta ?? { ip: null, country: null, userAgent: null };
 
-    const user = await this.usersService.validateOneUserPasswordByEmail(email);
-    if (!user) {
+    // ⚠️ validateOneUserPasswordByEmail은 계정이 없으면 null이 아니라 예외를 던진다.
+    // 없는 계정 시도야말로 감사의 핵심이므로 여기서 잡아 기록하고 원래 예외를 다시 던진다.
+    let user: UserEntity;
+    try {
+      user = await this.usersService.validateOneUserPasswordByEmail(email);
+    } catch (err) {
       this.appLoggerService.logAuth(
         'login_user_not_found',
         undefined,
         email,
         false,
       );
-      throw new UnauthorizedException('Invalid Email or Password');
+      await this.auditService.recordLoginAttempt({
+        email,
+        userId: null,
+        success: false,
+        failureReason: 'user_not_found',
+        ip: m.ip,
+        country: m.country,
+        userAgent: m.userAgent,
+      });
+      throw err;
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -69,6 +88,15 @@ export class AuthService {
         email,
         false,
       );
+      await this.auditService.recordLoginAttempt({
+        email,
+        userId: user.id,
+        success: false,
+        failureReason: 'password_mismatch',
+        ip: m.ip,
+        country: m.country,
+        userAgent: m.userAgent,
+      });
       throw new UnauthorizedException('Invalid Email or Password');
     }
 
@@ -88,6 +116,15 @@ export class AuthService {
     await this.usersService.saveRefreshToken(user.id, refreshToken);
 
     this.appLoggerService.logAuth('login_success', user.id, email, true);
+    await this.auditService.recordLoginAttempt({
+      email,
+      userId: user.id,
+      success: true,
+      failureReason: null,
+      ip: m.ip,
+      country: m.country,
+      userAgent: m.userAgent,
+    });
 
     return { accessToken, refreshToken, user };
   }

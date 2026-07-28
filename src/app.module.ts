@@ -11,6 +11,7 @@ import { S3Module } from './s3/s3.module';
 import { AppDataSource } from './data-source';
 import { TasksModule } from './tasks/tasks.module';
 import { UserGroupsModule } from './user-groups/user-groups.module';
+import { AuditModule } from './audit/audit.module';
 
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
@@ -48,6 +49,7 @@ import { LoggingInterceptor } from './interceptors/logging.interceptor';
     S3Module,
     TasksModule,
     UserGroupsModule,
+    AuditModule,
     AppLoggerModule,
     MetricsModule,
   ],

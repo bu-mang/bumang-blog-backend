@@ -11,7 +11,7 @@ import { AuthService } from './auth.service';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { SignupAuthDto } from './dto/signup-auth.dto';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from 'src/common/decorator/current-user.decorator';
@@ -22,7 +22,9 @@ import {
   REFRESH_TOKEN_MAX_AGE,
 } from 'src/common/constant/cookieOption';
 import { RequestWithUser } from 'types/user-request.interface';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
+import { CfThrottlerGuard } from './guards/cf-throttler.guard';
+import { extractRequestMeta } from 'src/common/util/request-meta.util';
 
 @ApiBearerAuth()
 @ApiTags('Auth') // Swagger UI 그룹 이름
@@ -31,8 +33,8 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   // 🟢 회원가입
-  @UseGuards(ThrottlerGuard)
-  @Throttle({ default: { ttl: 60000, limit: 3 } }) // 무차별 가입 방지: 분당 3회
+  @UseGuards(CfThrottlerGuard)
+  @Throttle({ default: { ttl: 60000, limit: 3 } }) // 무차별 가입 방지: 분당 3회 (CF 실IP 기준)
   @Post('signup')
   @ApiOperation({ summary: '회원가입', description: '새로운 유저 회원가입' })
   async signup(@Body() dto: SignupAuthDto) {
@@ -40,15 +42,19 @@ export class AuthController {
   }
 
   // 🔵 로그인 (Access + Refresh Token 발급, 204)
-  @UseGuards(ThrottlerGuard)
-  @Throttle({ default: { ttl: 60000, limit: 5 } }) // 무차별 대입 방지: 분당 5회
+  @UseGuards(CfThrottlerGuard)
+  @Throttle({ default: { ttl: 60000, limit: 5 } }) // 무차별 대입 방지: 분당 5회 (CF 실IP 기준)
   @Post('login')
   @ApiOperation({ summary: '로그인', description: '서비스에 로그인합니다.' })
   async login(
     @Body() dto: LoginAuthDto,
     @Res({ passthrough: true }) res: Response,
+    @Req() req: Request,
   ) {
-    const { accessToken, refreshToken } = await this.authService.login(dto);
+    const { accessToken, refreshToken } = await this.authService.login(
+      dto,
+      extractRequestMeta(req),
+    );
     const isProduction = process.env.NODE_ENV === 'production';
     const cookieOptions = getCookieOptions(isProduction);
 
@@ -61,9 +67,6 @@ export class AuthController {
       ...cookieOptions,
       maxAge: REFRESH_TOKEN_MAX_AGE,
     });
-
-    // 쿠키가 설정되었는지 확인
-    console.log('📍 Response headers:', res.getHeaders());
 
     // ✅ 응답 반환 추가
     return { success: true, message: 'Login Success' };

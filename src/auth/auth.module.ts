@@ -12,6 +12,7 @@ import { PostsModule } from 'src/posts/posts.module';
 import { CommentsModule } from 'src/comments/comments.module';
 import { IsOwnerGuard } from './guards/is-owner.guard';
 import { AppLoggerModule } from 'src/logger/app-logger.module';
+import { AuditModule } from 'src/audit/audit.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AppLoggerModule } from 'src/logger/app-logger.module';
     forwardRef(() => UsersModule), // 순환참조 방지 지연 로딩
     forwardRef(() => PostsModule), // 순환참조 방지 지연 로딩
     forwardRef(() => CommentsModule), // 순환참조 방지 지연 로딩
+    forwardRef(() => AuditModule), // AuthService가 감사 기록에 AuditService 사용
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret: process.env.JWT_SECRET,
