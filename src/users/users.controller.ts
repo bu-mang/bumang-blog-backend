@@ -104,14 +104,14 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.MEMBER)
+  @Roles(RolesEnum.HOST)
   @HttpCode(204) // "성공했으면 됐지, 딱히 줄 건 없어" → 204. 바디는 따로 없어야 함.
   @Delete(':id')
   @ApiOperation({
-    summary: '특정 유저 삭제',
-    description: '특정 유저 정보를 삭제합니다.',
+    summary: '특정 유저 삭제 [HOST]',
+    description:
+      '유저와 종속 데이터(댓글·그룹 멤버십)를 함께 삭제합니다. 작성한 글이 있으면 콘텐츠 유실 방지를 위해 차단됩니다(409).',
   })
-  @ApiExcludeEndpoint()
   async removeUser(@Param('id', ParseIntPipe) id: number) {
     return await this.usersService.removeUser(id);
   }

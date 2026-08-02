@@ -277,8 +277,8 @@ export class UsersService {
     return UserDetailResponseDto.fromEntity(updated, postsCount, commentsCount);
   }
 
-  // 유저 삭제
-  async removeUser(id: number): Promise<void | boolean> {
+  // 유저 삭제 (host 전용). 종속 데이터를 정리해 FK 제약을 안전하게 통과시킨다.
+  async removeUser(id: number): Promise<void> {
     const user = await this.userRepo.findOne({ where: { id } });
 
     if (!user) {
@@ -292,7 +292,31 @@ export class UsersService {
     }
 
     const tempEmail = user.email;
-    await this.userRepo.remove(user); // 따로 응답을 내려주지 않음 (204)
+
+    // 하나의 트랜잭션으로: 글 존재 시 차단 → 댓글 정리 → 유저 삭제(멤버십은 FK CASCADE).
+    await this.userRepo.manager.transaction(async (manager) => {
+      // 작성한 글이 있으면 콘텐츠 유실 방지를 위해 삭제를 막는다.
+      // soft-delete된 글도 FK가 남아 user 삭제를 막으므로, TypeORM 필터를 우회하는 raw count로 센다.
+      const rows: Array<{ count: number }> = await manager.query(
+        'SELECT count(*)::int AS count FROM post_entity WHERE "authorId" = $1',
+        [id],
+      );
+      const postCount = rows[0]?.count ?? 0;
+      if (postCount > 0) {
+        throw new ConflictException(
+          `이 유저(id=${id})가 작성한 글이 ${postCount}건 있어 삭제할 수 없습니다. 글을 먼저 이관하거나 삭제해 주세요.`,
+        );
+      }
+
+      // 댓글은 유저 종속 데이터라 함께 삭제 (comment_entity.authorId → NO ACTION).
+      await manager.query('DELETE FROM comment_entity WHERE "authorId" = $1', [
+        id,
+      ]);
+
+      // 그룹 멤버십은 FK CASCADE로 자동 삭제됨. 감사 로그(login_attempt)는 FK 없음(이력 보존).
+      await manager.delete(UserEntity, id);
+    });
+
     this.appLoggerService.logUser('user_removed', id, tempEmail, true);
   }
 
