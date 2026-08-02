@@ -19,8 +19,14 @@ export class PostListItemResponseDto {
   @ApiProperty({ example: 'React' })
   categoryLabel: string;
 
+  @ApiProperty({ example: 1, nullable: true, description: '필터 링크용 카테고리 id' })
+  categoryId: number | null;
+
   @ApiProperty({ example: 'Frontend' })
   groupLabel: string;
+
+  @ApiProperty({ example: 1, nullable: true, description: '필터 링크용 그룹 id' })
+  groupId: number | null;
 
   @ApiProperty({ example: ['React', 'Next.js'] })
   tags: { title: string; id: number }[];
@@ -54,6 +60,9 @@ export class PostListItemResponseDto {
   })
   type: PostTypeEnum;
 
+  @ApiProperty({ example: 0, description: '조회수' })
+  view: number;
+
   static fromEntity(
     post: PostEntity & { score?: number },
   ): PostListItemResponseDto {
@@ -63,7 +72,9 @@ export class PostListItemResponseDto {
     dto.previewText = post.previewText;
     dto.createdAt = post.createdAt;
     dto.categoryLabel = post.category?.label ?? null;
+    dto.categoryId = post.category?.id ?? null;
     dto.groupLabel = post.category?.group?.label ?? null;
+    dto.groupId = post.category?.group?.id ?? null;
     dto.tags =
       post.tags?.map((tag) => ({ title: tag.title, id: tag.id })) ?? [];
     dto.author = post.author?.nickname ?? 'unknown';
@@ -71,6 +82,7 @@ export class PostListItemResponseDto {
     dto.readPermisson = post.readPermission;
     dto.thumbnailUrl = post.thumbnailUrl;
     dto.type = post.type;
+    dto.view = post.view ?? 0;
 
     return dto;
   }
