@@ -11,14 +11,27 @@ type Block = {
 };
 
 const LOREM =
-  "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. ";
+  "춤은 안 췄고? 내 물음에 그녀는 심술궃게 웃더니 고개를 저었다. 너처럼 춤 못 추는 사람 처음 봤어. 나는 춤추는 시늉을 했고 우리는 소리 죽여 웃었다. 웃음을 그쳤을 때 그녀가 입을 열었다. 내가 춤을 추면 사람들이 웃어. 그러면 마음이 아프거든. 어둠 속에서, 하민의 얼굴 위로 고속도로 가로등 빛이 스쳐지나갔다. 그렇게 마음이 아프면 편해지는 게 있었어. 그래서 그랬어. 지금도 하민을 떠올릴 때면 그때의 그 얼굴이 생각난다. 그래서 그랬어, 속삭이듯이 말하던 그 얼굴이. 랄도. 하민이 내 이름을 부르고 잠시 머뭇거렸다. 응? 네 시간이야. 뭐가? 아치디에서 라페스트까지. 하민은 그 말을 하고 나를 빤히 쳐다봤다. 왜 나를 찾아왔니. 나는 뭐라고 대답해야 하는지 알지 못했다. 나조차도 그 이유를 알 수 없었으니까. 연락이 안 되니까 걱정되잖아. 그렇게 말하고 나는 그녀의 시선을 피해 창밖을 바라봤다. 대화가 끊기자 운전사가 엑셀을 밟아 엔진을 가속하는 소리만 들렸다. 이어지다가 끊어지고, 이어지다가 끊어지는 기계의 소리가. 얼마 지나지 않아 우리는 둘 다 잠이 들었다. 내가 하민의 어깨에, 하민이 내 머리에 기댄 채로 잤다. 하민을 향한 나의 마음은 담백한 종류의 것이었다. 하민의 얼굴에서도 나를 향한 여분의 감정은 발견할 수 없었다. 나는 하민에게 그 이상을 기대하지 않았고 하민도 그랬다. 우리 둘 중 누구라도 상대를 사랑했다면 그 사실을 눈치챌 수밖에 없었을 것이라고 그때의 나는 생각했다. 우리 사이에는 그 어떤 긴장도, 설렘도, 실망도, 좌절도, 배타적 소유에 대한 갈망도 존재하지 않았으니까. 내가 그녀를 사랑했다면 그런 식으로 잠들 수는 없었을 것이다. 나는 오래도록 그렇게 생각했다. ";
 
 const MEDIA_TYPES = new Set(['image', 'video', 'audio', 'file']);
 
-function makeFiller(length: number): string {
+// 문자열 해시 — 블록마다 더미 시작 위치를 변주하되 요청 간 안정적으로(원문 기반).
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return h;
+}
+
+// LOREM을 seed 위치부터 순환하며 length만큼 확보(짧으면 감싸서 반복). 시작점 변주로 균질감 완화.
+function makeFiller(length: number, seed = 0): string {
   if (length <= 0) return '';
+  const start = ((seed % LOREM.length) + LOREM.length) % LOREM.length;
   let s = '';
-  while (s.length < length) s += LOREM;
+  let i = start;
+  while (s.length < length) {
+    s += LOREM[i];
+    i = (i + 1) % LOREM.length;
+  }
   return s.slice(0, length);
 }
 
@@ -57,7 +70,7 @@ function deepMaskText(node: unknown): unknown {
         typeof v === 'string' &&
         obj['type'] === 'text'
       ) {
-        out[key] = makeFiller(v.length);
+        out[key] = makeFiller(v.length, hashStr(v));
       } else if (
         key === 'href' &&
         typeof v === 'string' &&
@@ -88,7 +101,7 @@ function maskProps(
   for (const key of ['caption', 'name']) {
     const v = cloned[key];
     if (typeof v === 'string' && v.length > 0) {
-      cloned[key] = makeFiller(v.length);
+      cloned[key] = makeFiller(v.length, hashStr(v));
     }
   }
   return cloned;
