@@ -10,6 +10,7 @@ import { CommentsModule } from 'src/comments/comments.module';
 import { GroupEntity } from 'src/categories/entities/group.entity';
 import { AppLoggerModule } from 'src/logger/app-logger.module';
 import { UserGroupsModule } from 'src/user-groups/user-groups.module';
+import { AuditModule } from 'src/audit/audit.module';
 
 @Module({
   imports: [
@@ -23,6 +24,8 @@ import { UserGroupsModule } from 'src/user-groups/user-groups.module';
     forwardRef(() => CommentsModule),
     AppLoggerModule,
     UserGroupsModule,
+    // AuditModule → AuthModule → PostsModule로 도는 순환을 forwardRef로 해소.
+    forwardRef(() => AuditModule),
   ],
   controllers: [PostsController],
   providers: [PostsService],

@@ -28,4 +28,18 @@ export class AuditController {
     );
     return this.auditService.findRecent(idx, size);
   }
+
+  @Get('content-views')
+  @ApiOperation({ summary: '콘텐츠 조회 감사 로그 조회 [HOST]' })
+  findContentViews(
+    @Query('pageIndex') pageIndex?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    const idx = Math.max(1, parseInt(pageIndex ?? '1', 10) || 1);
+    const size = Math.min(
+      100,
+      Math.max(1, parseInt(pageSize ?? '50', 10) || 50),
+    );
+    return this.auditService.findRecentContentViews(idx, size);
+  }
 }
