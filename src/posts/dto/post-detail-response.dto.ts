@@ -140,7 +140,9 @@ export class PostDetailResponseDto {
         }
       : null;
 
-    dto.group = post.category.group
+    // category 자체가 없으면 group도 없다. 실제로 카테고리 없는 글은 만들 수 없지만,
+    // 윗줄과 달리 여기만 옵셔널 체이닝이 빠져 있어 그런 데이터가 생기면 상세 조회가 500이 났다.
+    dto.group = post.category?.group
       ? {
           id: post.category.group.id,
           label: post.category.group.label,
