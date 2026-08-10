@@ -21,7 +21,7 @@ import { DeletePostResponseDto } from './dto/delete-post-response.dto';
 import { canReadPost } from './util/canReadPost';
 import { CurrentUserDto } from 'src/common/dto/current-user.dto';
 import { canCreateOrUpdatePost } from './util/canCreateOrUpdatePost';
-import { maskContent } from './util/maskContent';
+import { maskContent, extractInlineAudience } from './util/maskContent';
 import { UserGroupsService } from 'src/user-groups/user-groups.service';
 
 // blockAudienceMap에서 참조된 그룹 id를 모아 중복 제거
@@ -349,13 +349,26 @@ export class PostsService {
 
     const blockMap = post.blockAudienceMap ?? {};
 
+    // 라벨용 병합 맵: 블록레벨 audience ∪ 블록 안 인라인 masked 그룹(중복 제거).
+    // 마스킹 자체는 blockMap(블록레벨)만 쓰고, 인라인은 maskContent가 content 내부에서 처리한다.
+    const inlineAudience = extractInlineAudience(post.content);
+    const mergedAudience: Record<string, number[]> = {};
+    for (const [id, ids] of Object.entries(blockMap)) {
+      if (ids?.length) mergedAudience[id] = [...ids];
+    }
+    for (const [id, ids] of Object.entries(inlineAudience)) {
+      const set = new Set(mergedAudience[id] ?? []);
+      ids.forEach((g) => set.add(g));
+      mergedAudience[id] = [...set];
+    }
+
     // 라벨 빌더: 주어진 block→ids 매핑에서 참조 그룹 id 모아 한 번에 이름 조회 후
     // block → names[] 형태로 변환. 그룹이 삭제됐거나 이름 못 찾으면 해당 id는 스킵.
     const buildLabels = async (
       pickFor: (blockId: string) => boolean,
     ): Promise<Record<string, string[]>> => {
       const filtered: Record<string, number[]> = {};
-      for (const [id, ids] of Object.entries(blockMap)) {
+      for (const [id, ids] of Object.entries(mergedAudience)) {
         if (ids?.length > 0 && pickFor(id)) filtered[id] = ids;
       }
       const allIds = collectGroupIds(filtered);

@@ -53,6 +53,53 @@ function resolveRequired(
   return [];
 }
 
+// 인라인 마스킹: 텍스트 노드의 styles.masked 값(콤마조인 groupId)을 파싱.
+function parseMaskGroups(v: unknown): number[] | null {
+  if (typeof v !== 'string' || v.length === 0) return null;
+  return v
+    .split(',')
+    .map((s) => parseInt(s.trim(), 10))
+    .filter((n) => Number.isFinite(n));
+}
+
+function readMaskedStyle(obj: Record<string, unknown>): unknown {
+  const styles = obj['styles'];
+  return styles && typeof styles === 'object'
+    ? (styles as Record<string, unknown>)['masked']
+    : undefined;
+}
+
+/**
+ * visible 블록의 인라인 content에서 styles.masked 구간을 viewer 권한 기준으로 처리.
+ * - 권한 있음(그룹 교집합/빈 그룹): masked 스타일 제거 → 원문 노출.
+ * - 권한 없음: text를 더미로 치환하고 masked 스타일 유지 → 프론트가 블러.
+ * link 노드는 안쪽 content로 재귀.
+ */
+function maskInlineRuns(content: unknown, viewer: Set<number>): unknown {
+  if (!Array.isArray(content)) return content;
+  return content.map((node) => {
+    if (!node || typeof node !== 'object') return node;
+    const obj = node as Record<string, unknown>;
+    if (obj['type'] === 'link') {
+      return { ...obj, content: maskInlineRuns(obj['content'], viewer) };
+    }
+    if (obj['type'] === 'text') {
+      const required = parseMaskGroups(readMaskedStyle(obj));
+      if (required === null) return node; // 마스크 없음
+      const authorized =
+        required.length === 0 || intersects(viewer, required);
+      if (authorized) {
+        const styles = { ...(obj['styles'] as Record<string, unknown>) };
+        delete styles.masked;
+        return { ...obj, styles };
+      }
+      const text = typeof obj['text'] === 'string' ? obj['text'] : '';
+      return { ...obj, text: makeFiller(text.length, hashStr(text)) };
+    }
+    return node;
+  });
+}
+
 /**
  * inline content / table content 등 내부에 박힌 텍스트와 링크를 재귀적으로 마스킹.
  * - { type: "text", text: "..." } → 같은 길이 더미로
@@ -129,15 +176,17 @@ function processBlock(
     intersects(viewerGroupIds, required);
 
   if (visible) {
+    // 블록은 보이지만, 안의 인라인 masked 구간은 뷰어 권한 기준으로 처리.
+    const content = maskInlineRuns(block.content, viewerGroupIds);
     if (block.children?.length) {
       const maskedChildren = block.children.map(
         (child) =>
           processBlock(child, viewerGroupIds, blockAudienceMap, maskedIds)
             .masked,
       );
-      return { masked: { ...block, children: maskedChildren } };
+      return { masked: { ...block, content, children: maskedChildren } };
     }
-    return { masked: block };
+    return { masked: { ...block, content } };
   }
 
   // 차단: 텍스트/미디어를 더미로 치환하고, 블록 id를 maskedIds에 기록
@@ -183,4 +232,49 @@ export function maskContent(
     maskedJson: JSON.stringify(masked),
     maskedBlockIds: maskedIds,
   };
+}
+
+// 인라인 masked 스타일의 그룹id를 블록 content에서 재귀 수집(link content 포함).
+function collectInlineGroups(node: unknown, acc: Set<number>): void {
+  if (Array.isArray(node)) {
+    node.forEach((n) => collectInlineGroups(n, acc));
+    return;
+  }
+  if (node && typeof node === 'object') {
+    const obj = node as Record<string, unknown>;
+    if (obj['type'] === 'text') {
+      const g = parseMaskGroups(readMaskedStyle(obj));
+      if (g) g.forEach((id) => acc.add(id));
+    }
+    if ('content' in obj) collectInlineGroups(obj['content'], acc);
+  }
+}
+
+/**
+ * content JSON에서 블록별 인라인 masked 그룹id를 뽑는다(라벨 병합용).
+ * 반환: { [blockId]: number[] } — 인라인 마스크가 있는 블록만.
+ */
+export function extractInlineAudience(
+  contentJson: string,
+): Record<string, number[]> {
+  const out: Record<string, number[]> = {};
+  if (!contentJson) return out;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(contentJson);
+  } catch {
+    return out;
+  }
+  if (!Array.isArray(parsed)) return out;
+
+  const walk = (block: Block): void => {
+    if (block.id) {
+      const acc = new Set<number>();
+      collectInlineGroups(block.content, acc);
+      if (acc.size > 0) out[block.id] = [...acc];
+    }
+    block.children?.forEach(walk);
+  };
+  (parsed as Block[]).forEach(walk);
+  return out;
 }
