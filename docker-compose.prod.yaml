@@ -167,6 +167,12 @@ services:
       - ../bumang-blog-front/.env.production
     environment:
       - NODE_ENV=production
+      # SSR이 백엔드를 부를 때 쓰는 내부 주소. 같은 compose 네트워크라 서비스명 `app`으로
+      # 바로 닿는다. 공개 주소(api.bumang.xyz)로 부르면 인터넷 → Cloudflare → nginx를 한 바퀴
+      # 돌아 옆 컨테이너로 들어오는 데다, 방문자 IP를 넘기려고 붙이는 cf-connecting-ip를
+      # Cloudflare가 403으로 튕긴다(2026-09-06 글 상세 SSR 전면 장애). 브라우저는 여전히
+      # NEXT_PUBLIC_API_BASE_URL(공개 주소)을 쓴다.
+      - API_INTERNAL_URL=http://app:4001
     depends_on:
       - app
     logging: *default-logging
