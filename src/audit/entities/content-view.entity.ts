@@ -6,18 +6,20 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-// 로그인한 유저의 콘텐츠(포스트 상세) 조회 감사 로그.
-// 익명 조회는 기록하지 않는다 — 볼륨이 자릿수로 커지고, 조회수 dedup과 역할이 겹친다.
-// 보존은 TasksService의 자정 크론이 730일 기준으로 잘라낸다(트림 온 라이트 아님 —
-// 로그인 시도와 달리 매 요청마다 count()를 도는 비용을 감당할 볼륨이 아니다).
+// 콘텐츠(포스트 상세) 조회 감사 로그.
+// 2026-09: 익명 조회도 기록하도록 확장했다(그 전까지는 로그인 유저 한정).
+// ⚠️ 보존 전략의 전제가 이때 깨졌다 — TasksService의 자정 크론이 730일로 잘라내는데,
+// 그 기간 캡은 "로그인 유저 한정이라 볼륨이 낮다"를 전제로 고른 값이었다. 익명이
+// 포함되면 볼륨이 자릿수로 커지므로 건수 캡 병행을 검토해야 한다(2026-07 디스크 포화 502).
 @Entity('content_view_entity')
 export class ContentViewEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
+  // null이면 비로그인 방문자. 익명 조회를 기록하기 시작하며 nullable로 바뀌었다.
   @Index()
-  @Column({ type: 'int' })
-  userId: number;
+  @Column({ type: 'int', nullable: true })
+  userId: number | null;
 
   // 스냅샷. 유저가 탈퇴하거나 이메일을 바꿔도 로그는 그대로 남아야 한다
   // (login_attempt가 email을 그대로 저장하는 것과 같은 이유).

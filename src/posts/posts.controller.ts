@@ -101,31 +101,29 @@ export class PostsController {
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user?: CurrentUserDto,
   ) {
-    // 감사 기록은 로그인 유저만. 익명 조회는 볼륨이 자릿수로 커져서 제외한다.
+    // 익명 조회도 기록한다(2026-09) — userId/userEmail이 null로 남는다.
     // 저장을 await하지 않는 이유: 이 핸들러는 매 페이지 로드(SSR·새로고침 포함)마다
     // 돌기 때문에 DB 왕복을 응답 지연에 얹지 않는다. recordContentView는 throw하지 않는다.
     try {
       const post = await this.postsService.findPostDetail(id, user || null);
 
-      if (user) {
-        void this.auditService.recordContentView({
-          userId: user.userId,
-          userEmail: user.email,
-          postId: id,
-          postTitle: post.title,
-          denied: false,
-          maskedBlockCount: post.maskedBlockIds?.length ?? 0,
-          ...extractRequestMeta(req),
-        });
-      }
+      void this.auditService.recordContentView({
+        userId: user?.userId ?? null,
+        userEmail: user?.email ?? null,
+        postId: id,
+        postTitle: post.title,
+        denied: false,
+        maskedBlockCount: post.maskedBlockIds?.length ?? 0,
+        ...extractRequestMeta(req),
+      });
 
       return post;
     } catch (err) {
       // 권한 미달로 막힌 시도야말로 감사 가치가 가장 높다. 없는 글(404)은 기록하지 않는다.
-      if (user && err instanceof ForbiddenException) {
+      if (err instanceof ForbiddenException) {
         void this.auditService.recordContentView({
-          userId: user.userId,
-          userEmail: user.email,
+          userId: user?.userId ?? null,
+          userEmail: user?.email ?? null,
           postId: id,
           denied: true,
           ...extractRequestMeta(req),
