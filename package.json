@@ -9,7 +9,7 @@
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "ssh": "ssh -i key-of-bumang-blog.pem ec2-user@ec2-13-124-254-190.ap-northeast-2.compute.amazonaws.com",
+    "ssh": "ssh -i ../key-of-bumang-blog.pem ec2-user@ec2-13-124-254-190.ap-northeast-2.compute.amazonaws.com",
     "docker:up": "docker-compose -f docker-compose.dev.yaml --env-file .env.development up -d",
     "docker:down": "docker-compose -f docker-compose.dev.yaml --env-file .env.development down",
     "docker:sh": "docker exec -it bumang_blog_backend sh",
