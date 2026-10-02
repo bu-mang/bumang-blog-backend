@@ -53,7 +53,15 @@ export class AuthService {
   // meta: 감사 로그용 요청 정보(IP/국가/UA). 컨트롤러에서 Cloudflare 헤더로 추출해 전달.
   async login(dto: LoginAuthDto, meta?: RequestMeta) {
     const { email, password } = dto;
-    const m: RequestMeta = meta ?? { ip: null, country: null, userAgent: null };
+    const m: RequestMeta = meta ?? {
+      ip: null,
+      country: null,
+      region: null,
+      city: null,
+      colo: null,
+      referer: null,
+      userAgent: null,
+    };
 
     // ⚠️ validateOneUserPasswordByEmail은 계정이 없으면 null이 아니라 예외를 던진다.
     // 없는 계정 시도야말로 감사의 핵심이므로 여기서 잡아 기록하고 원래 예외를 다시 던진다.
@@ -74,6 +82,9 @@ export class AuthService {
         failureReason: 'user_not_found',
         ip: m.ip,
         country: m.country,
+        region: m.region,
+        city: m.city,
+        colo: m.colo,
         userAgent: m.userAgent,
       });
       throw err;
@@ -95,6 +106,9 @@ export class AuthService {
         failureReason: 'password_mismatch',
         ip: m.ip,
         country: m.country,
+        region: m.region,
+        city: m.city,
+        colo: m.colo,
         userAgent: m.userAgent,
       });
       throw new UnauthorizedException('Invalid Email or Password');
@@ -123,6 +137,9 @@ export class AuthService {
       failureReason: null,
       ip: m.ip,
       country: m.country,
+      region: m.region,
+      city: m.city,
+      colo: m.colo,
       userAgent: m.userAgent,
     });
 

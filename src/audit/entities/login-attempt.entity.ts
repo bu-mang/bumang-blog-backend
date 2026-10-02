@@ -36,9 +36,17 @@ export class LoginAttemptEntity {
   @Column({ length: 8, nullable: true })
   country: string | null;
 
-  // 도시 (geoip-lite, 대략적·비어있을 수 있음).
+  // 시/도 (Cloudflare CF-Region, 대략적·비어있을 수 있음).
+  @Column({ length: 128, nullable: true })
+  region: string | null;
+
+  // 도시 (Cloudflare CF-IPCity, 대략적·비어있을 수 있음).
   @Column({ length: 128, nullable: true })
   city: string | null;
+
+  // 요청을 받은 Cloudflare 엣지 (CF-Ray 꼬리표, 예: ICN/LAX).
+  @Column({ length: 8, nullable: true })
+  colo: string | null;
 
   @Column({ type: 'text', nullable: true })
   userAgent: string | null;

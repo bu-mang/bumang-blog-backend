@@ -1,7 +1,30 @@
 export interface RequestMeta {
   ip: string | null;
   country: string | null;
+  region: string | null;
+  city: string | null;
+  colo: string | null;
+  referer: string | null;
   userAgent: string | null;
+}
+
+// DB 컬럼 길이.
+const PLACE_MAX_LENGTH = 128;
+const REFERER_MAX_LENGTH = 512;
+
+// Cloudflare 위치 헤더(CF-Region·CF-IPCity)를 읽는다. 대략적인 값이고 비어 있을 수 있다.
+// Node는 헤더 바이트를 latin1으로 읽으므로 UTF-8 지명(São Paulo 등)은 되돌려 해석한다.
+function readPlaceHeader(raw: unknown): string | null {
+  if (typeof raw !== 'string' || raw.length === 0) return null;
+  return Buffer.from(raw, 'latin1').toString('utf8').slice(0, PLACE_MAX_LENGTH);
+}
+
+// CF-Ray("a4443d65f85d9a6b-LAX")의 꼬리표가 요청을 받은 Cloudflare 엣지(IATA 공항 코드)다.
+// 한국 방문자가 서울(ICN)이 아니라 해외 엣지(LAX 등)로 빠지는 비율을 보려고 남긴다.
+function readColo(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const colo = raw.split('-').pop()?.toUpperCase() ?? '';
+  return /^[A-Z]{3}$/.test(colo) ? colo : null;
 }
 
 // 크롤러·자동화 클라이언트로 보이는 User-Agent.
@@ -42,8 +65,23 @@ export function extractRequestMeta(req: {
   const country =
     typeof rawCountry === 'string' && rawCountry.length > 0 ? rawCountry : null;
 
+  // 시/도·도시는 Cloudflare Managed Transforms "Add visitor location headers"가 붙여준다.
+  // 예전엔 geoip-lite로 도시를 직접 조회했는데, 그 라이브러리가 IP DB 전체(약 210MB)를
+  // 메모리에 올려 컨테이너 한도(384MB)를 꽉 채웠다.
+  const region = readPlaceHeader(headers['cf-region']);
+  const city = readPlaceHeader(headers['cf-ipcity']);
+
+  const colo = readColo(headers['cf-ray']);
+
+  // 유입 경로. SSR 요청이면 프론트가 방문자의 원래 Referer를 이어 넘긴다.
+  const rawReferer = headers['referer'];
+  const referer =
+    typeof rawReferer === 'string' && rawReferer.length > 0
+      ? rawReferer.slice(0, REFERER_MAX_LENGTH)
+      : null;
+
   const ua = headers['user-agent'];
   const userAgent = typeof ua === 'string' && ua.length > 0 ? ua : null;
 
-  return { ip, country, userAgent };
+  return { ip, country, region, city, colo, referer, userAgent };
 }

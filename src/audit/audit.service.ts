@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
-import * as geoip from 'geoip-lite';
 import { LoginAttemptEntity } from './entities/login-attempt.entity';
 import { ContentViewEntity } from './entities/content-view.entity';
 import { isBotUserAgent } from 'src/common/util/request-meta.util';
@@ -13,6 +12,9 @@ export interface LoginAttemptInput {
   failureReason?: string | null;
   ip?: string | null;
   country?: string | null;
+  region?: string | null;
+  city?: string | null;
+  colo?: string | null;
   userAgent?: string | null;
 }
 
@@ -26,6 +28,10 @@ export interface ContentViewInput {
   maskedBlockCount?: number;
   ip?: string | null;
   country?: string | null;
+  region?: string | null;
+  city?: string | null;
+  colo?: string | null;
+  referer?: string | null;
   userAgent?: string | null;
 }
 
@@ -77,8 +83,6 @@ export class AuditService {
   // ⚠️ 감사 저장 실패가 로그인 흐름 자체를 막으면 안 되므로 절대 throw하지 않는다.
   async recordLoginAttempt(input: LoginAttemptInput): Promise<void> {
     try {
-      const city = input.ip ? geoip.lookup(input.ip)?.city || null : null;
-
       const attempt = this.repo.create({
         email: input.email,
         userId: input.userId ?? null,
@@ -86,7 +90,9 @@ export class AuditService {
         failureReason: input.failureReason ?? null,
         ip: input.ip ?? null,
         country: input.country ?? null,
-        city: city && city.length > 0 ? city : null,
+        region: input.region ?? null,
+        city: input.city ?? null,
+        colo: input.colo ?? null,
         userAgent: input.userAgent ?? null,
       });
       await this.repo.save(attempt);
@@ -134,8 +140,6 @@ export class AuditService {
       // 같은 방문자가 짧은 시간에 같은 글을 다시 연 것은 한 줄로 접는다.
       if (this.isDuplicateContentView(input)) return;
 
-      const city = input.ip ? geoip.lookup(input.ip)?.city || null : null;
-
       const view = this.contentViewRepo.create({
         userId: input.userId,
         userEmail: input.userEmail?.slice(0, 255) ?? null,
@@ -145,7 +149,10 @@ export class AuditService {
         maskedBlockCount: input.maskedBlockCount ?? 0,
         ip: input.ip ?? null,
         country: input.country ?? null,
-        city: city && city.length > 0 ? city : null,
+        region: input.region ?? null,
+        city: input.city ?? null,
+        colo: input.colo ?? null,
+        referer: input.referer ?? null,
         userAgent: input.userAgent ?? null,
       });
       await this.contentViewRepo.save(view);
