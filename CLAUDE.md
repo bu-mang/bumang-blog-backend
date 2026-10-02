@@ -75,7 +75,9 @@ JWT 이중 토큰 (access 단기 + refresh DB저장·로테이션), httpOnly 쿠
 ## 관찰성
 
 - 요청 로깅은 전역 `LoggingInterceptor`(`src/interceptors/`)가 Winston으로 남긴다.
-- Winston: `logs/{app,error,exceptions}.log`.
+- Winston: `logs/{app,error,exceptions}.log`. 프로덕션에서는 호스트의 `/var/log/bumang-blog/backend`에 연결돼 재배포 후에도 남는다.
+- **프로세스가 죽었을 때 볼 곳** (프로덕션): ① `/var/log/bumang-blog/{backend/reports,frontend}`의 Node 진단 리포트(JSON — 호출 스택·힙 상태) ② `sudo coredumpctl list`(죽은 시각·시그널 — 덤프 본체는 만들지 않게 설정됨, `/etc/systemd/coredump.conf.d/10-no-dump.conf`) ③ `sudo dmesg -T | grep -i oom`(OOM 킬러). 실행 옵션은 `docker-compose.prod.yaml`의 `command`.
+- ⚠️ 프로덕션 컨테이너 안에서 진단용 프로세스(`docker exec ... node -e`)를 띄우지 말 것. 메모리 한도에 붙어 있을 때 본체를 죽인다(2026-10-03, API 4분 중단).
 - **Prometheus 지표 수집은 주석 처리로 꺼 둔 상태**(2026-10). 수집 서버 없이 앱이 지표만 메모리에 쌓고 있었고, 라벨에 실제 URL을 넣어 시계열이 끝없이 늘어나는 누수가 있었다. `src/metrics/`·`prometheus/`·`grafana/`·compose의 주석 블록은 그대로 남겨 뒀다. 다시 켜려면 `app.module.ts` 상단 주석의 안내대로 주석을 풀고, 라벨은 라우트 패턴으로 쓴다.
 - `/metrics`와 auth 라우트는 보안 강화돼 있음(외부 차단·레이트리밋, commit `1f43086`). auth 컨트롤러는 `@Throttle`로 별도 강한 제한, 전역은 느슨(`ttl 60s / limit 100`).
 

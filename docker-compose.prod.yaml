@@ -148,6 +148,29 @@ services:
       - .env.production
     environment:
       - NODE_ENV=production
+    # 실행 옵션을 NODE_OPTIONS가 아니라 command에 둔다 — 배포 때 도는
+    # `docker-compose run app npm run migration:run`(ts-node)은 command를 덮어쓰므로
+    # 아래 힙 상한의 영향을 받지 않는다.
+    #
+    # --max-old-space-size: V8 힙 상한. 없으면 Node가 컨테이너 한도(384M)를 넘겨 쓰려다
+    #   스왑에 빠져 죽지도 못하고 멈춘다. 한도보다 낮게 잡아 "힙 부족"으로 깔끔하게 죽고
+    #   바로 재시작되게 한다(나머지는 버퍼·네이티브 메모리 몫).
+    # --report-*: 치명적 오류로 죽을 때 진단 리포트(JSON, 수십 KB)를 남긴다. 호출 스택·힙
+    #   상태가 들어 있어 코어 덤프 대신 쓴다. --report-exclude-env가 없으면 환경변수
+    #   (DB 비밀번호·JWT 키)가 리포트에 그대로 담긴다.
+    command:
+      - node
+      - --max-old-space-size=256
+      - --report-on-fatalerror
+      - --report-uncaught-exception
+      - --report-exclude-env
+      - --report-dir=/app/logs/reports
+      - dist/src/main.js
+    volumes:
+      # 로그·진단 리포트를 컨테이너 밖에 둔다. 컨테이너 안에 두면 재배포 때 사라져서
+      # "왜 죽었는지"를 뒤늦게 확인할 수 없다(2026-09 세 차례 비정상 종료의 원인을 못 찾음).
+      # 크기는 winston 설정(maxsize·maxFiles)이 묶는다 — 합계 최대 약 350MB.
+      - /var/log/bumang-blog/backend:/app/logs
     logging: *default-logging
     deploy:
       resources:
@@ -173,6 +196,19 @@ services:
       # Cloudflare가 403으로 튕긴다(2026-09-06 글 상세 SSR 전면 장애). 브라우저는 여전히
       # NEXT_PUBLIC_API_BASE_URL(공개 주소)을 쓴다.
       - API_INTERNAL_URL=http://app:4001
+    # 힙 상한·진단 리포트는 app 서비스의 주석 참고. 프론트는 sharp(이미지 처리)가 V8 힙
+    # 바깥의 네이티브 메모리를 쓰므로 힙 상한을 더 낮게 잡아 여유를 남긴다.
+    command:
+      - node
+      - --max-old-space-size=224
+      - --report-on-fatalerror
+      - --report-uncaught-exception
+      - --report-exclude-env
+      - --report-dir=/app/reports
+      - server.js
+    volumes:
+      # 컨테이너가 uid 1001(nextjs)로 돌아서 호스트 디렉토리도 1001 소유여야 쓸 수 있다.
+      - /var/log/bumang-blog/frontend:/app/reports
     depends_on:
       - app
     logging: *default-logging
