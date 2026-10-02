@@ -20,7 +20,10 @@ import { ThrottlerModule } from '@nestjs/throttler';
 
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './logger/winston.config';
-import { MetricsModule } from './metrics/metrics.module';
+// Prometheus 지표 수집은 꺼 둔다(2026-10). 수집 서버(prometheus 컨테이너)를 내린 뒤에도
+// 앱이 지표를 메모리에 계속 쌓고 있었다. 다시 켜려면 이 파일·main.ts·
+// logging.interceptor.ts·logger/app-logger.{module,service}.ts의 주석을 함께 푼다.
+// import { MetricsModule } from './metrics/metrics.module';
 import { AppLoggerModule } from './logger/app-logger.module';
 import { LoggingInterceptor } from './interceptors/logging.interceptor';
 
@@ -51,7 +54,7 @@ import { LoggingInterceptor } from './interceptors/logging.interceptor';
     UserGroupsModule,
     AuditModule,
     AppLoggerModule,
-    MetricsModule,
+    // MetricsModule,
   ],
   controllers: [AppController],
   providers: [AppService, LoggingInterceptor],

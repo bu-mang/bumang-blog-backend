@@ -9,7 +9,7 @@ import {
   WINSTON_MODULE_PROVIDER,
 } from 'nest-winston';
 import { LoggingInterceptor } from './interceptors/logging.interceptor';
-import { MetricsService } from './metrics/metrics.service';
+// import { MetricsService } from './metrics/metrics.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -33,7 +33,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(
     new LoggingInterceptor(
       app.get(WINSTON_MODULE_PROVIDER),
-      app.get(MetricsService),
+      // app.get(MetricsService),
     ),
   );
 

@@ -74,8 +74,9 @@ JWT 이중 토큰 (access 단기 + refresh DB저장·로테이션), httpOnly 쿠
 
 ## 관찰성
 
-- 요청 로깅·메트릭은 전역 `LoggingInterceptor`(`src/interceptors/`)가 `MetricsService`로 보낸다.
-- Winston: `logs/{app,error,exceptions}.log`. Prometheus 스크랩 + Grafana.
+- 요청 로깅은 전역 `LoggingInterceptor`(`src/interceptors/`)가 Winston으로 남긴다.
+- Winston: `logs/{app,error,exceptions}.log`.
+- **Prometheus 지표 수집은 주석 처리로 꺼 둔 상태**(2026-10). 수집 서버 없이 앱이 지표만 메모리에 쌓고 있었고, 라벨에 실제 URL을 넣어 시계열이 끝없이 늘어나는 누수가 있었다. `src/metrics/`·`prometheus/`·`grafana/`·compose의 주석 블록은 그대로 남겨 뒀다. 다시 켜려면 `app.module.ts` 상단 주석의 안내대로 주석을 풀고, 라벨은 라우트 패턴으로 쓴다.
 - `/metrics`와 auth 라우트는 보안 강화돼 있음(외부 차단·레이트리밋, commit `1f43086`). auth 컨트롤러는 `@Throttle`로 별도 강한 제한, 전역은 느슨(`ttl 60s / limit 100`).
 
 ## 함정 / 정리 후보
