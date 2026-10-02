@@ -47,7 +47,7 @@ src/<domain>/
 
 ## 컨벤션
 
-- **Path alias**: `src/*`, `types/*` (`tsconfig.json`). 절대 `@/`가 아니다 (그건 프론트). import는 `import { X } from 'src/posts/...'` 형태.
+- **Path alias**: `src/*` (`tsconfig.json`). `rootDir`를 `./`로 고정해 빌드 결과가 항상 `dist/src/...`에 나온다 — 실행 명령이 그 경로에 의존한다. 절대 `@/`가 아니다 (그건 프론트). import는 `import { X } from 'src/posts/...'` 형태.
 - **tsconfig는 strict 아님**: `strictNullChecks:false`, `noImplicitAny:false`. 기존 코드 톤에 맞춰서 과한 null 가드를 강제하지 말 것.
 - **Validation** (`main.ts` 전역 `ValidationPipe`): `whitelist:true`(DTO에 없는 필드 제거), `forbidNonWhitelisted:false`(에러는 안 냄 — 프론트 호환), `transform:true`(string→number 등 자동 변환). 그래서 query/param도 DTO 타입으로 받으면 변환된다.
 - **Swagger**: 모든 DTO 필드에 `@ApiProperty({ example, description })`를 붙이는 게 관례 (commit `80776aa`). 문서는 `/api-docs`.
@@ -55,17 +55,22 @@ src/<domain>/
 
 ## 인증 / 인가
 
-JWT 이중 토큰 (access 단기 + refresh DB저장·로테이션), httpOnly 쿠키. CORS는 `main.ts`에서 화이트리스트(`localhost:4000`, `bumang.xyz`).
+access는 JWT(15분), refresh는 **기기별 세션**(무작위 토큰, DB에는 SHA-256 해시만 — `auth/entities/refresh-session.entity.ts`, 30일 슬라이딩, 유저당 최대 10개). 둘 다 httpOnly 쿠키. 수명의 단일 출처는 `auth/const/token.const.ts`(JWT 만료·쿠키 maxAge·세션 만료가 전부 여기서 나온다 — env의 `JWT_EXPIRATION`은 더 이상 읽지 않는다). CORS는 `main.ts`에서 화이트리스트(`localhost:4000`, `bumang.xyz`).
+
+- refresh 토큰은 **로테이션하지 않는다** — 새 토큰을 실은 응답이 브라우저에 닿기 전에 취소되면(Next 프리페치) 멀쩡한 세션이 끊긴다.
+- 로그아웃은 그 기기의 세션만 지운다. `/auth/refresh`·`/auth/logout`은 가드 없이 refresh 쿠키로 판정한다.
+- 토큰·비밀번호를 로그에 찍지 말 것(예전에 refresh 토큰 전체를 `console.log`로 출력하고 있었다).
 
 | 가드 (`src/auth/guards/`) | 용도 |
 |---|---|
 | `jwt-auth.guard.ts` | access 토큰 필수 |
-| `optional-jwt.guard.ts` | 로그인/비로그인 모두 허용 (공개+권한 콘텐츠) |
-| `jwt-refresh.guard.ts` | refresh 토큰 검증 (재발급용) |
+| `optional-jwt.guard.ts` | 로그인/비로그인 모두 허용 (공개+권한 콘텐츠). 단 access는 없는데 refresh 쿠키가 있으면 **401** — 로그인한 사용자가 익명용(마스킹된) 응답을 받지 않고 갱신 후 재요청하게 한다 |
 | `roles.guard.ts` | `@Roles(...)` 역할 검사 |
 | `is-owner.guard.ts` | `@IsOwner()` 리소스 소유자 검사 |
 
-데코레이터: `@Roles`·`@IsOwner` (`src/auth/decorators/`), `@CurrentUser` (`src/common/decorator/current-user.decorator.ts`). 전략: `src/auth/strategies/{jwt,jwt-refresh}.strategy.ts`.
+데코레이터: `@Roles`·`@IsOwner` (`src/auth/decorators/`), `@CurrentUser` (`src/common/decorator/current-user.decorator.ts`). 전략: `src/auth/strategies/jwt.strategy.ts`.
+
+**레이트리밋**: `common/guard/cf-throttler.guard.ts`가 전역 가드(`APP_GUARD`)로 방문자 IP(`CF-Connecting-IP`)당 분당 300회를 센다. 가입·로그인은 `@Throttle`로 더 강하게. 프론트는 레이트리밋을 하지 않는다.
 
 **포스트 권한 로직은 서비스에 흩지 말고 유틸을 재사용**한다 (`src/posts/util/`):
 - `canReadPost.ts` / `canCreateOrUpdatePost.ts` — 권한 판정

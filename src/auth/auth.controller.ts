@@ -5,25 +5,18 @@ import {
   Req,
   Res,
   UnauthorizedException,
-  UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginAuthDto } from './dto/login-auth.dto';
 import { SignupAuthDto } from './dto/signup-auth.dto';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
-import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { CurrentUser } from 'src/common/decorator/current-user.decorator';
-import { CurrentUserDto } from 'src/common/dto/current-user.dto';
 import {
   ACCESS_TOKEN_MAX_AGE,
   getCookieOptions,
   REFRESH_TOKEN_MAX_AGE,
 } from 'src/common/constant/cookieOption';
-import { RequestWithUser } from 'types/user-request.interface';
 import { Throttle } from '@nestjs/throttler';
-import { CfThrottlerGuard } from './guards/cf-throttler.guard';
 import { extractRequestMeta } from 'src/common/util/request-meta.util';
 
 @ApiBearerAuth()
@@ -33,8 +26,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   // 🟢 회원가입
-  @UseGuards(CfThrottlerGuard)
-  @Throttle({ default: { ttl: 60000, limit: 3 } }) // 무차별 가입 방지: 분당 3회 (CF 실IP 기준)
+  @Throttle({ default: { ttl: 60000, limit: 3 } }) // 무차별 가입 방지: 분당 3회 (전역 가드가 실IP 기준으로 센다)
   @Post('signup')
   @ApiOperation({ summary: '회원가입', description: '새로운 유저 회원가입' })
   async signup(@Body() dto: SignupAuthDto) {
@@ -42,8 +34,7 @@ export class AuthController {
   }
 
   // 🔵 로그인 (Access + Refresh Token 발급, 204)
-  @UseGuards(CfThrottlerGuard)
-  @Throttle({ default: { ttl: 60000, limit: 5 } }) // 무차별 대입 방지: 분당 5회 (CF 실IP 기준)
+  @Throttle({ default: { ttl: 60000, limit: 5 } }) // 무차별 대입 방지: 분당 5회 (전역 가드가 실IP 기준으로 센다)
   @Post('login')
   @ApiOperation({ summary: '로그인', description: '서비스에 로그인합니다.' })
   async login(
@@ -72,98 +63,62 @@ export class AuthController {
     return { success: true, message: 'Login Success' };
   }
 
-  // 🔴 로그아웃 (RefreshToken 무효화)
+  // 🔴 로그아웃 (이 기기의 세션만 무효화)
+  // 가드를 걸지 않는다 — access 토큰이 만료된 상태에서도 로그아웃은 돼야 하고,
+  // 세션을 가리키는 건 refresh 토큰이다. 토큰이 없어도 쿠키는 지우고 성공으로 끝낸다.
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: '로그아웃',
     description: '서비스에서 로그아웃합니다.',
   })
-  async logout(
-    @Res({ passthrough: true }) res: Response,
-    @CurrentUser() user?: CurrentUserDto,
-  ) {
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieOptions = getCookieOptions(isProduction);
-
-    const logout = await this.authService.logout(user.userId);
-
-    // 쿠키 삭제를 위한 확장 옵션
-    const clearOptions = {
-      ...cookieOptions,
-      maxAge: 0, // 즉시 만료
-    };
-
-    // accessToken 쿠키 제거
-    res.clearCookie('accessToken', clearOptions);
-    res.clearCookie('refreshToken', clearOptions);
-
-    return logout;
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.logout(req.cookies?.refreshToken);
+    this.clearAuthCookies(res);
+    return result;
   }
 
   // 🟡 access Token 재발급
-  // @UseGuards(JwtAuthGuard)
-  @UseGuards(JwtRefreshGuard)
+  // refresh 토큰(쿠키)이 가리키는 세션이 살아 있으면 새 access 토큰을 내려주고,
+  // refresh 쿠키의 수명도 세션과 함께 연장한다.
   @Post('refresh')
   @ApiOperation({
     summary: '엑세스 토큰 갱신',
     description: '엑세스 토큰을 갱신하여 로그인을 지속시킵니다.',
   })
   async renewAccessToken(
-    @Req() req: RequestWithUser,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-    @CurrentUser() user?: CurrentUserDto,
   ) {
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+    const refreshToken: string | undefined = req.cookies?.refreshToken;
+    const renewed = refreshToken
+      ? await this.authService.renewAccessToken(refreshToken)
+      : null;
+
+    if (!renewed) {
+      this.clearAuthCookies(res);
+      throw new UnauthorizedException('Session expired');
     }
 
-    console.log('🏛️ 도달');
-
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieOptions = getCookieOptions(isProduction);
-
-    // refresh token 추출
-    const refreshToken = req.cookies?.refreshToken;
-    if (!refreshToken) {
-      console.log('🔰 loggedOut');
-      const clearOptions = {
-        ...cookieOptions,
-        maxAge: 0, // 즉시 만료
-        // expires: new Date(0), // 1970년 1월 1일로 설정하여 즉시 만료
-      };
-
-      res.clearCookie('accessToken', clearOptions);
-      res.clearCookie('refreshToken', clearOptions);
-      throw new UnauthorizedException('Refresh token not found');
-    }
-
-    console.log('🔏 refresh exists?');
-
-    const { accessToken } = await this.authService.renewAccessToken(
-      user.userId,
-      refreshToken,
+    const cookieOptions = getCookieOptions(
+      process.env.NODE_ENV === 'production',
     );
+    res.cookie('accessToken', renewed.accessToken, {
+      ...cookieOptions,
+      maxAge: ACCESS_TOKEN_MAX_AGE,
+    });
+    res.cookie('refreshToken', refreshToken, {
+      ...cookieOptions,
+      maxAge: REFRESH_TOKEN_MAX_AGE,
+    });
 
-    if (accessToken) {
-      console.log('🏅 accessToken renwed successfully');
-      res.cookie('accessToken', accessToken, {
-        ...cookieOptions,
-        maxAge: ACCESS_TOKEN_MAX_AGE,
-      });
-      console.log('🏴‍☠️ renewAccessToken');
-      return { success: true, message: 'Token refreshed' };
-    } else {
-      // 쿠키 삭제를 위한 확장 옵션
-      const clearOptions = {
-        ...cookieOptions,
-        maxAge: 0, // 즉시 만료
-        // expires: new Date(0), // 1970년 1월 1일로 설정하여 즉시 만료
-      };
-      console.log('💳 loggedOut');
-      res.clearCookie('accessToken', clearOptions);
-      res.clearCookie('refreshToken', clearOptions);
-      throw new UnauthorizedException('Failed to refresh token');
-    }
+    return { success: true, message: 'Token refreshed' };
+  }
+
+  private clearAuthCookies(res: Response) {
+    const cookieOptions = getCookieOptions(
+      process.env.NODE_ENV === 'production',
+    );
+    res.clearCookie('accessToken', cookieOptions);
+    res.clearCookie('refreshToken', cookieOptions);
   }
 }

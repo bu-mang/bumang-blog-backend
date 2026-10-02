@@ -17,6 +17,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { CfThrottlerGuard } from './common/guard/cf-throttler.guard';
 
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './logger/winston.config';
@@ -31,8 +33,11 @@ import { LoggingInterceptor } from './interceptors/logging.interceptor';
   imports: [
     // cron작업용 세팅
     ScheduleModule.forRoot(),
-    // 전역 기본 레이트리밋(느슨). 강한 제한은 auth 컨트롤러에서 @Throttle로 별도 적용
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    // 전역 레이트리밋: 방문자 IP당 분당 300회. 페이지 하나가 API를 여러 번 부르므로
+    // (본문·관련글·이전다음글·프로필) 사람이 닿을 수 없는 선에서 넉넉하게 잡는다.
+    // 가입·로그인은 auth 컨트롤러의 @Throttle이 훨씬 강하게 덮어쓴다.
+    // 예전엔 프론트 미들웨어가 같은 일을 메모리 Map으로 했는데 백엔드로 옮겼다.
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 300 }]),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
@@ -57,6 +62,11 @@ import { LoggingInterceptor } from './interceptors/logging.interceptor';
     // MetricsModule,
   ],
   controllers: [AppController],
-  providers: [AppService, LoggingInterceptor],
+  providers: [
+    AppService,
+    LoggingInterceptor,
+    // 모듈 설정만으로는 제한이 걸리지 않는다 — 가드를 전역 등록해야 실제로 동작한다.
+    { provide: APP_GUARD, useClass: CfThrottlerGuard },
+  ],
 })
 export class AppModule {}

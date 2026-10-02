@@ -50,6 +50,6 @@ export class UserEntity {
   @OneToMany(() => CommentEntity, (comment) => comment.author)
   comments: CommentEntity[];
 
-  @Column({ nullable: true })
-  refreshToken: string;
+  // refresh 토큰은 여기 두지 않는다 — 기기별 세션(RefreshSessionEntity)으로 옮겼다.
+  // DB의 "refreshToken" 컬럼은 무중단 배포를 위해 아직 남아 있다(코드에서는 쓰지 않음).
 }

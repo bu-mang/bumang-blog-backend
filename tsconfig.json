@@ -9,9 +9,12 @@
     "target": "ES2021",
     "sourceMap": true,
     "outDir": "./dist",
+    // 출력 위치를 dist/src/... 로 고정한다. 지정하지 않으면 tsc가 소스들의 공통 상위
+    // 폴더를 추측하는데, src 밖의 파일이 하나도 없어지는 순간 dist/main.js로 바뀌어
+    // 실행 명령(node dist/src/main.js — Dockerfile.prod·compose)이 깨진다.
+    "rootDir": "./",
     "paths": {
-      "src/*": ["./src/*"],
-      "types/*": ["./types/*"]
+      "src/*": ["./src/*"]
     },
     "incremental": true,
     "skipLibCheck": true,
