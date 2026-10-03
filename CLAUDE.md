@@ -13,7 +13,8 @@ npm test                   # jest (*.spec.ts)
 
 # 마이그레이션 (엔티티 변경 후 필수)
 npm run migration:generate -- src/migrations/<이름>
-npm run migration:run
+npm run migration:run       # 로컬: ts-node로 src/ 원본 실행
+npm run migration:run:prod  # 배포: 빌드된 dist/ 실행 (Actions가 사용. ts-node는 메모리를 너무 씀)
 npm run migration:revert
 
 # Docker 개발환경
