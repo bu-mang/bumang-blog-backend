@@ -162,7 +162,7 @@ services:
     #   (DB 비밀번호·JWT 키)가 리포트에 그대로 담긴다.
     command:
       - node
-      - --max-old-space-size=224
+      - --max-old-space-size=192
       - --report-on-fatalerror
       - --report-uncaught-exception
       - --report-exclude-env
@@ -177,9 +177,10 @@ services:
     deploy:
       resources:
         # 2026-10 실측: 평소 약 75MB, 재시작 후 최고 101MB(geoip-lite 제거 후).
-        # t4g.micro(약 920MB)로 내릴 것을 전제로 컨테이너 하나가 서버를 잡아먹지 못하게 잡는다.
+        # t4g.micro(약 920MB)에서 세 컨테이너가 한도까지 동시에 차도 서버 메모리 안에
+        # 들어오게 잡는다(256+256+100 + 컨테이너 밖 약 230MB). 넘으면 한도만큼 스왑을 더 쓴다.
         limits:
-          memory: 320M
+          memory: 256M
         reservations:
           memory: 80M
 
@@ -204,7 +205,7 @@ services:
     # 바깥의 네이티브 메모리를 쓰므로 힙 상한을 더 낮게 잡아 여유를 남긴다.
     command:
       - node
-      - --max-old-space-size=192
+      - --max-old-space-size=160
       - --report-on-fatalerror
       - --report-uncaught-exception
       - --report-exclude-env
@@ -221,7 +222,8 @@ services:
         limits:
           # Next.js SSR이 150M 한도에서 OOM 킬 나던 이력이 있다. 2026-10 실측: 평소 약 85MB,
           # 재시작 후 최고 123MB. 이미지 처리(sharp)의 순간 사용분을 남기고 t4g.micro에 맞춘다.
-          memory: 320M
+          # 힙 상한(160)을 한도보다 넉넉히 낮게 둬 sharp의 네이티브 메모리 몫을 남긴다.
+          memory: 256M
         reservations:
           memory: 75M
 
