@@ -37,16 +37,20 @@ async function bootstrap() {
     ),
   );
 
-  // Swagger 설정
-  const config = new DocumentBuilder()
-    .setTitle('BUMANG BLOG API')
-    .setDescription('버망 블로그 백엔드 API 문서입니다.')
-    .setVersion('1.0')
-    .addBearerAuth() // ✅ BearerToken 추가
-    .build();
+  // Swagger는 개발 환경에서만 띄운다. 프로덕션에서 켜 두면 모든 API 경로와 요청 형식이
+  // 누구에게나 공개되고(2026-10까지 api.bumang.xyz/api-docs가 열려 있었다), 문서 객체가
+  // 메모리에 상주한다.
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('BUMANG BLOG API')
+      .setDescription('버망 블로그 백엔드 API 문서입니다.')
+      .setVersion('1.0')
+      .addBearerAuth() // ✅ BearerToken 추가
+      .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api-docs', app, document);
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api-docs', app, document);
+  }
 
   // CORS는 백엔드에서 처리
   app.enableCors({
