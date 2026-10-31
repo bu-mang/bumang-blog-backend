@@ -64,20 +64,20 @@ export class CategoriesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.MEMBER)
+  @Roles(RolesEnum.HOST) // 분류 체계 변경은 host만 (member가 지우면 글의 카테고리가 비게 된다)
   @Post('groups')
   @ApiOperation({
     summary: '새로운 그룹 생성 [ADMIN]',
     description: '특정 그룹 데이터를 조회합니다.',
   })
   @ApiExcludeEndpoint() // 스웨거에 제외
-  async createOneGroup(@Body() { label, order = null }: CreateGroupDto) {
-    return await this.categoriesService.createOneGroup({ label, order });
+  async createOneGroup(@Body() { label, slug, order = null }: CreateGroupDto) {
+    return await this.categoriesService.createOneGroup({ label, slug, order });
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.MEMBER)
-  @Patch('groups')
+  @Roles(RolesEnum.HOST) // 분류 체계 변경은 host만 (member가 지우면 글의 카테고리가 비게 된다)
+  @Patch('groups/:id')
   @ApiOperation({
     summary: '특정 그룹 업데이트 [ADMIN]',
     description: '특정 그룹 데이터를 업데이트합니다.',
@@ -85,13 +85,17 @@ export class CategoriesController {
   @ApiExcludeEndpoint() // 스웨거에 제외
   async updateOneGroup(
     @Param('id', ParseIntPipe) id: number,
-    @Body() { label, order = null }: UpdateGroupDto,
+    @Body() { label, slug, order = null }: UpdateGroupDto,
   ) {
-    return await this.categoriesService.updateOneGroup(id, { label, order });
+    return await this.categoriesService.updateOneGroup(id, {
+      label,
+      slug,
+      order,
+    });
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.MEMBER)
+  @Roles(RolesEnum.HOST) // 분류 체계 변경은 host만 (member가 지우면 글의 카테고리가 비게 된다)
   @Delete('groups/:id')
   @HttpCode(204)
   @ApiOperation({
@@ -117,7 +121,7 @@ export class CategoriesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.MEMBER)
+  @Roles(RolesEnum.HOST) // 분류 체계 변경은 host만 (member가 지우면 글의 카테고리가 비게 된다)
   @Post() // 201 created
   @ApiOperation({
     summary: '새로운 카테고리 생성 [ADMIN]',
@@ -125,17 +129,18 @@ export class CategoriesController {
   })
   @ApiExcludeEndpoint() // 스웨거에 제외
   async createOneCategory(
-    @Body() { label, order = null, groupId = null }: CreateCategoryDto,
+    @Body() { label, slug, order = null, groupId = null }: CreateCategoryDto,
   ) {
     return await this.categoriesService.createOneCategory({
       label,
+      slug,
       order,
       groupId,
     });
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.MEMBER)
+  @Roles(RolesEnum.HOST) // 분류 체계 변경은 host만 (member가 지우면 글의 카테고리가 비게 된다)
   @Patch(':id')
   @ApiOperation({
     summary: '특정 카테고리 수정 [ADMIN]',
@@ -144,17 +149,18 @@ export class CategoriesController {
   @ApiExcludeEndpoint() // 스웨거에 제외
   async updateOneCategory(
     @Param('id', ParseIntPipe) id: number,
-    @Body() { label, order, groupId }: UpdateCategoryDto,
+    @Body() { label, slug, order, groupId }: UpdateCategoryDto,
   ) {
     return await this.categoriesService.updateOneCategory(id, {
       label,
+      slug,
       order,
       groupId,
     });
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RolesEnum.MEMBER)
+  @Roles(RolesEnum.HOST) // 분류 체계 변경은 host만 (member가 지우면 글의 카테고리가 비게 된다)
   @Delete(':id')
   @HttpCode(204)
   @ApiOperation({

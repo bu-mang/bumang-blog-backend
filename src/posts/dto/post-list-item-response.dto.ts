@@ -19,17 +19,33 @@ export class PostListItemResponseDto {
   @ApiProperty({ example: 'React' })
   categoryLabel: string;
 
-  @ApiProperty({ example: 1, nullable: true, description: '필터 링크용 카테고리 id' })
+  @ApiProperty({ example: 1, nullable: true, description: '카테고리 id' })
   categoryId: number | null;
+
+  @ApiProperty({
+    example: 'architecture',
+    nullable: true,
+    description: '필터 링크용 카테고리 slug',
+  })
+  categorySlug: string | null;
 
   @ApiProperty({ example: 'Frontend' })
   groupLabel: string;
 
-  @ApiProperty({ example: 1, nullable: true, description: '필터 링크용 그룹 id' })
+  @ApiProperty({ example: 1, nullable: true, description: '그룹 id' })
   groupId: number | null;
 
-  @ApiProperty({ example: ['React', 'Next.js'] })
-  tags: { title: string; id: number }[];
+  @ApiProperty({
+    example: 'backend',
+    nullable: true,
+    description: '필터 링크·기본 썸네일용 그룹 slug',
+  })
+  groupSlug: string | null;
+
+  @ApiProperty({
+    example: [{ title: 'Kubernetes', id: 1, slug: 'kubernetes' }],
+  })
+  tags: { title: string; id: number; slug: string }[];
 
   @ApiProperty({ example: 'Bumang' })
   author: string;
@@ -73,10 +89,16 @@ export class PostListItemResponseDto {
     dto.createdAt = post.createdAt;
     dto.categoryLabel = post.category?.label ?? null;
     dto.categoryId = post.category?.id ?? null;
+    dto.categorySlug = post.category?.slug ?? null;
     dto.groupLabel = post.category?.group?.label ?? null;
     dto.groupId = post.category?.group?.id ?? null;
+    dto.groupSlug = post.category?.group?.slug ?? null;
     dto.tags =
-      post.tags?.map((tag) => ({ title: tag.title, id: tag.id })) ?? [];
+      post.tags?.map((tag) => ({
+        title: tag.title,
+        id: tag.id,
+        slug: tag.slug,
+      })) ?? [];
     dto.author = post.author?.nickname ?? 'unknown';
     dto.authorRole = post.author?.role ?? null;
     dto.readPermisson = post.readPermission;

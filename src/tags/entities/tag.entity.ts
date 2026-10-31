@@ -19,6 +19,10 @@ export class TagsEntity {
   @Column({ unique: true })
   title: string;
 
+  // 주소용 고정 키 (예: 'kubernetes'). 화면 이름(title)을 바꿔도 그대로 둔다.
+  @Column({ unique: true })
+  slug: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

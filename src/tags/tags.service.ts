@@ -10,6 +10,7 @@ import { Repository } from 'typeorm';
 import { TagsEntity } from './entities/tag.entity';
 import { GroupEntity } from 'src/categories/entities/group.entity';
 import { CommonTagResponseDto } from './dto/common-tag-response.dto';
+import { resolveSlug } from 'src/common/util/slugify';
 
 @Injectable()
 export class TagsService {
@@ -24,6 +25,7 @@ export class TagsService {
   // 1. 태그 생성
   async createTag(createTagDto: CreateTagDto) {
     const { title, groupId } = createTagDto;
+    const slug = resolveSlug(title, createTagDto.slug);
 
     const existingTitle = await this.tagRepo.findOne({
       where: { title },
@@ -31,6 +33,9 @@ export class TagsService {
 
     if (existingTitle) {
       throw new ConflictException('This tag title is already in use');
+    }
+    if (await this.tagRepo.findOne({ where: { slug } })) {
+      throw new ConflictException('This tag slug is already in use');
     }
 
     const existingGroup = await this.groupRepo.findOne({
@@ -43,6 +48,7 @@ export class TagsService {
 
     const tag = await this.tagRepo.save({
       title,
+      slug,
       group: existingGroup,
     });
 
@@ -92,6 +98,16 @@ export class TagsService {
 
       if (existingTitle && existingTitle.id !== id) {
         throw new ConflictException('This tag title is already in use');
+      }
+    }
+
+    // slug는 이름을 따라 바뀌지 않는다 — 명시했을 때만 바꾼다.
+    if (updateTagDto.slug) {
+      const existingSlug = await this.tagRepo.findOne({
+        where: { slug: updateTagDto.slug },
+      });
+      if (existingSlug && existingSlug.id !== id) {
+        throw new ConflictException('This tag slug is already in use');
       }
     }
 

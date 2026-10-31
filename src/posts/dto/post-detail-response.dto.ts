@@ -8,6 +8,9 @@ export class CategorySimplifiedResponse {
 
   @ApiProperty()
   label: string;
+
+  @ApiProperty({ example: 'architecture', description: '주소용 고정 키' })
+  slug: string;
 }
 
 export class GroupSimplifiedResponse {
@@ -16,6 +19,9 @@ export class GroupSimplifiedResponse {
 
   @ApiProperty()
   label: string;
+
+  @ApiProperty({ example: 'backend', description: '주소용 고정 키' })
+  slug: string;
 }
 
 export class TagSimplifiedResponse {
@@ -24,6 +30,9 @@ export class TagSimplifiedResponse {
 
   @ApiProperty()
   label: string;
+
+  @ApiProperty({ example: 'kubernetes', description: '주소용 고정 키' })
+  slug: string;
 }
 
 export class PostDetailResponseDto {
@@ -137,6 +146,7 @@ export class PostDetailResponseDto {
       ? {
           id: post.category.id,
           label: post.category.label,
+          slug: post.category.slug,
         }
       : null;
 
@@ -146,10 +156,17 @@ export class PostDetailResponseDto {
       ? {
           id: post.category.group.id,
           label: post.category.group.label,
+          slug: post.category.group.slug,
         }
       : null;
 
-    dto.tags = [...post.tags.map((tag) => ({ id: tag.id, label: tag.title }))];
+    dto.tags = [
+      ...post.tags.map((tag) => ({
+        id: tag.id,
+        label: tag.title,
+        slug: tag.slug,
+      })),
+    ];
 
     return dto;
   }

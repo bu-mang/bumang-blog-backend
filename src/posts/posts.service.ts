@@ -39,6 +39,12 @@ import { GroupEntity } from 'src/categories/entities/group.entity';
 import { RolesEnum } from 'src/users/const/roles.const';
 import { AppLoggerService } from 'src/logger/app-logger.service';
 
+/** 그룹 slug가 'life'면 Life 글, 아니면 Dev 글. 프론트의 Dev/Life 탭과 같은 기준이다. */
+export const LIFE_GROUP_SLUG = 'life';
+function postTypeOfGroup(groupSlug?: string | null): PostTypeEnum {
+  return groupSlug === LIFE_GROUP_SLUG ? PostTypeEnum.LIFE : PostTypeEnum.DEV;
+}
+
 @Injectable()
 export class PostsService {
   constructor(
@@ -70,6 +76,10 @@ export class PostsService {
     page: number,
     size: number,
     filter: {
+      groupSlug?: string;
+      categorySlug?: string;
+      tagSlugs?: string[];
+      // id 필터는 구버전 프론트 호환용 — slug가 있으면 slug가 우선한다.
       groupId?: number;
       categoryId?: number;
       tagIds?: number[];
@@ -77,7 +87,17 @@ export class PostsService {
     },
     // currentUser: CurrentUserDto | null = null,
   ): Promise<PaginatedResponseDto<PostListItemResponseDto>> {
-    const { groupId, categoryId, tagIds, type } = filter;
+    const {
+      groupSlug,
+      categorySlug,
+      tagSlugs,
+      groupId,
+      categoryId,
+      tagIds,
+      type,
+    } = filter;
+    const hasTagSlugs = Array.isArray(tagSlugs) && tagSlugs.length > 0;
+    const hasTagIds = Array.isArray(tagIds) && tagIds.length > 0;
 
     const query = this.postRepo
       .createQueryBuilder('post')
@@ -87,12 +107,18 @@ export class PostsService {
       .leftJoinAndSelect('post.tags', 'tag')
       .where('post.deletedAt IS NULL');
 
-    // 필터링: 그룹아이디 or 카테고리아이디 or 태그아이디 or 분류
-    if (groupId) {
+    // 필터링: 그룹 or 카테고리 or 태그 or 분류 (각각 slug 우선, 없으면 구버전 id)
+    if (groupSlug) {
+      query.andWhere('group.slug = :groupSlug', { groupSlug });
+    } else if (categorySlug) {
+      query.andWhere('category.slug = :categorySlug', { categorySlug });
+    } else if (hasTagSlugs) {
+      query.andWhere('tag.slug IN (:...tagSlugs)', { tagSlugs });
+    } else if (groupId) {
       query.andWhere('group.id = :groupId', { groupId });
     } else if (categoryId) {
       query.andWhere('category.id = :categoryId', { categoryId });
-    } else if (Array.isArray(tagIds) && tagIds.length !== 0) {
+    } else if (hasTagIds) {
       query.andWhere('tag.id IN (:...tagIds)', { tagIds });
     } else if (type === 'dev' || type === 'life') {
       query.andWhere('post.type = :type', { type });
@@ -116,26 +142,41 @@ export class PostsService {
 
     let subject = '';
 
-    // 주제에 대한 라벨 붙여주기
-    if (groupId) {
+    // 주제에 대한 라벨 붙여주기.
+    // 없는 slug·id로 들어오면 목록은 비고 제목도 빈다 — 예전엔 null 검사 없이 .label을 읽어 500이었다.
+    if (groupSlug) {
+      const targetGroup = await this.groupRepo.findOne({
+        where: { slug: groupSlug },
+      });
+      subject = targetGroup?.label ?? '';
+    } else if (categorySlug) {
+      const targetCategory = await this.categoryRepo.findOne({
+        where: { slug: categorySlug },
+      });
+      subject = targetCategory?.label ?? '';
+    } else if (hasTagSlugs) {
+      const targetTags = await this.tagRepo.find({
+        where: { slug: In(tagSlugs) },
+      });
+      subject = targetTags.map((tag) => tag.title).join(', ');
+    } else if (groupId) {
       const targetGroup = await this.groupRepo.findOne({
         where: { id: groupId },
       });
-      subject = targetGroup.label;
+      subject = targetGroup?.label ?? '';
     } else if (categoryId) {
       const targetCategory = await this.categoryRepo.findOne({
         where: { id: categoryId },
       });
-      subject = targetCategory.label;
-    } else if (tagIds) {
+      subject = targetCategory?.label ?? '';
+    } else if (hasTagIds) {
       const targetTags = await this.tagRepo.find({
         where: { id: In(tagIds) },
       });
       subject = targetTags.map((tag) => tag.title).join(', ');
-    }
-
-    // '분류' 필터링으로 요청 왔던거면 '분류'로.
-    if (type) {
+    } else if (type) {
+      // 그룹·카테고리·태그 필터가 없을 때만 탭 이름(dev/life/all)을 제목으로.
+      // 예전엔 항상 덮어써서, 탭을 고른 뒤 카테고리를 누르면 제목이 'dev'·'all'로 나왔다.
       subject = type;
     }
 
@@ -227,12 +268,8 @@ export class PostsService {
       throw new NotFoundException(`Category with ID ${categoryId} not found`);
     }
 
-    let postType = PostTypeEnum.DEV;
-    const selectedGroup = existingCategory.group?.label;
-
-    if (selectedGroup === 'Life') {
-      postType = PostTypeEnum.LIFE;
-    }
+    // dev/life는 그룹 slug로 정한다 (화면 이름 'Life'를 바꿔도 깨지지 않게).
+    const postType = postTypeOfGroup(existingCategory.group?.slug);
 
     let validTags: TagsEntity[] = [];
     if (tagIds && tagIds.length > 0) {
@@ -518,9 +555,8 @@ export class PostsService {
 
     existingPost.category = existingCategory;
 
-    if (existingCategory.group.label === 'Life') {
-      existingPost.type = PostTypeEnum.LIFE;
-    }
+    // 수정할 때마다 그룹으로 다시 정한다. 예전엔 Life로 옮길 때만 바꿔서, Life 밖으로 빼도 life로 남았다.
+    existingPost.type = postTypeOfGroup(existingCategory.group?.slug);
 
     let validTags: TagsEntity[] = [];
     if (tagIds && tagIds.length > 0) {

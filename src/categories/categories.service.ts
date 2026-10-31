@@ -15,6 +15,7 @@ import { UpdateGroupDto } from './dto/update-group.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { GroupedMenuTreeResponseDto } from './dto/grouped-menu-tree.dto';
 import { PostEntity } from 'src/posts/entities/post.entity';
+import { resolveSlug } from 'src/common/util/slugify';
 
 @Injectable()
 export class CategoriesService {
@@ -59,6 +60,11 @@ export class CategoriesService {
   // 3. 그룹 추가
   async createOneGroup(dto: CreateGroupDto): Promise<GroupEntity> {
     const { label, order } = dto;
+    const slug = resolveSlug(label, dto.slug);
+
+    if (await this.groupRepo.findOne({ where: { slug } })) {
+      throw new ConflictException('Group slug is already in use');
+    }
 
     const existingLabel = await this.groupRepo.findOne({
       where: { label },
@@ -91,6 +97,7 @@ export class CategoriesService {
 
     const group = this.groupRepo.create({
       label,
+      slug,
       order: finalOrder,
     });
 
@@ -99,7 +106,7 @@ export class CategoriesService {
 
   // 4. 그룹 수정
   async updateOneGroup(id: number, dto: UpdateGroupDto) {
-    const { label, order } = dto;
+    const { label, slug, order } = dto;
 
     // 아이디로 조회
     const existingGroup = await this.groupRepo.findOne({
@@ -123,6 +130,15 @@ export class CategoriesService {
       }
 
       newOne.label = label;
+    }
+
+    // slug는 라벨을 따라 바뀌지 않는다 — 명시했을 때만 바꾼다.
+    if (typeof slug === 'string') {
+      const existingSlug = await this.groupRepo.findOne({ where: { slug } });
+      if (existingSlug && existingSlug.id !== id) {
+        throw new ConflictException('Slug already in use');
+      }
+      newOne.slug = slug;
     }
 
     if (typeof order === 'number') {
@@ -178,10 +194,15 @@ export class CategoriesService {
   // 2. 단일 카테고리 추가
   async createOneCategory(dto: CreateCategoryDto): Promise<CategoryEntity> {
     const { label, order, groupId } = dto;
+    const slug = resolveSlug(label, dto.slug);
+
     // 1. 해당 이름의 카테고리가 이미 있는지 체크
     const existingLabel = await this.categoryRepo.findOne({ where: { label } });
     if (existingLabel) {
       throw new ConflictException('Category label is already in use'); // 409 에러를 던져줌
+    }
+    if (await this.categoryRepo.findOne({ where: { slug } })) {
+      throw new ConflictException('Category slug is already in use');
     }
 
     // 그룹 찾기 로직
@@ -222,6 +243,7 @@ export class CategoriesService {
 
     const category = this.categoryRepo.create({
       label,
+      slug,
       order: finalOrder,
       group,
     });
@@ -234,7 +256,17 @@ export class CategoriesService {
     id: number,
     dto: UpdateCategoryDto,
   ): Promise<CategoryEntity> {
-    const { label, order, groupId } = dto;
+    const { label, slug, order, groupId } = dto;
+
+    // slug는 라벨을 따라 바뀌지 않는다 — 명시했을 때만 바꾼다.
+    if (typeof slug === 'string') {
+      const existingSlug = await this.categoryRepo.findOne({
+        where: { slug },
+      });
+      if (existingSlug && existingSlug.id !== id) {
+        throw new ConflictException('this slug has already been used');
+      }
+    }
 
     // 라벨 변경 요청 처리
     if (typeof label === 'string') {

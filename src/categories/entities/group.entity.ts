@@ -19,6 +19,12 @@ export class GroupEntity {
   })
   label: string;
 
+  // 주소·코드 판정용 고정 키 (예: 'life'). 화면 이름(label)을 바꿔도 그대로 둔다.
+  @Column({
+    unique: true,
+  })
+  slug: string;
+
   @Column({
     nullable: false,
   })

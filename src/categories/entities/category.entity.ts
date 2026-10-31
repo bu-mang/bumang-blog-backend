@@ -23,6 +23,12 @@ export class CategoryEntity {
   })
   label: string;
 
+  // 주소용 고정 키 (예: 'architecture'). 화면 이름(label)을 바꿔도 그대로 둔다.
+  @Column({
+    unique: true,
+  })
+  slug: string;
+
   @Column({
     nullable: false,
   })

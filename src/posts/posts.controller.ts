@@ -67,6 +67,9 @@ export class PostsController {
     // @CurrentUser() user?: CurrentUserDto,
   ): Promise<PaginatedResponseDto<PostListItemResponseDto>> {
     return await this.postsService.findPosts(query.pageIndex, query.pageSize, {
+      groupSlug: query.group,
+      categorySlug: query.category,
+      tagSlugs: query.tag,
       groupId: query.groupId,
       categoryId: query.categoryId,
       tagIds: query.tagIds,

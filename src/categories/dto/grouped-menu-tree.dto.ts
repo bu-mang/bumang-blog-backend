@@ -9,6 +9,9 @@ class CategoryResponseDto {
   @ApiProperty()
   label: string;
 
+  @ApiProperty({ example: 'architecture', description: '주소용 고정 키' })
+  slug: string;
+
   @ApiProperty()
   order: number;
 
@@ -16,6 +19,7 @@ class CategoryResponseDto {
     const dto = new CategoryResponseDto();
     dto.id = category.id;
     dto.label = category.label;
+    dto.slug = category.slug;
     dto.order = category.order;
     return dto;
   }
@@ -27,6 +31,12 @@ export class GroupedMenuTreeResponseDto {
 
   @ApiProperty()
   label: string;
+
+  @ApiProperty({
+    example: 'life',
+    description: '주소·코드 판정용 고정 키 (life면 Life 탭)',
+  })
+  slug: string;
 
   @ApiProperty()
   categories: CategoryResponseDto[];
@@ -41,6 +51,7 @@ export class GroupedMenuTreeResponseDto {
     const dto = new GroupedMenuTreeResponseDto();
     dto.id = group.id;
     dto.label = group.label;
+    dto.slug = group.slug;
     dto.totalPostsCount = totalPostsCount;
     dto.categories =
       group.categories

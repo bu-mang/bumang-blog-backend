@@ -9,10 +9,14 @@ export class CommonTagResponseDto {
   @ApiProperty()
   title: string;
 
+  @ApiProperty({ example: 'kubernetes', description: '주소용 고정 키' })
+  slug: string;
+
   @ApiProperty()
   group: {
     id: number;
     label: string;
+    slug: string;
   };
 
   static fromEntity(tag: TagsEntity): CommonTagResponseDto {
@@ -23,9 +27,11 @@ export class CommonTagResponseDto {
     const dto = new CommonTagResponseDto();
     dto.id = tag.id;
     dto.title = tag.title;
+    dto.slug = tag.slug;
     dto.group = {
       id: tag.group.id,
       label: tag.group.label,
+      slug: tag.group.slug,
     };
 
     return dto;
