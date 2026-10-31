@@ -611,6 +611,7 @@ export class PostsService {
     const categoryId = targetPost.category.id;
     const groupId = targetPost.category.group.id;
 
+    // 1단계: 점수만 계산해 상위 3개의 id를 고른다.
     const query = this.postRepo
       .createQueryBuilder('post')
       .leftJoin('post.tags', 'tag')
@@ -620,15 +621,7 @@ export class PostsService {
       .andWhere('post.deletedAt IS NULL') // soft-deleted 글 제외
       // readPermission 필터는 두지 않는다 — 리스트(findPosts)와 동일하게 제목/미리보기/썸네일은
       // 권한과 무관하게 내려주고, 본문 접근은 상세 조회(findPostDetail)의 canReadPost에서 막는다.
-      .select('post.id', 'id') // id라는 컬럼으로 post.id 가져옴
-      .addSelect('post.title', 'title') // title이라는 컬럼으로 post.title 가져옴
-      .addSelect('post.previewText', 'previewText') // previewText이라는 컬럼으로 post.previewText 가져옴
-      .addSelect('post.thumbnailUrl', 'thumbnailUrl') // previewText이라는 컬럼으로 post.previewText 가져옴
-      .addSelect('post.createdAt', 'createdAt')
-      .addSelect('category.label', 'categoryLabel') // 이미 leftJoin했으니 가능
-      .addSelect('group.label', 'groupLabel') // 이미 leftJoin했으니 가능
-      .addSelect('post.author', 'author')
-      .addSelect('post.readPermission', 'readPermission')
+      .select('post.id', 'id')
       .addSelect(
         // 유사도 점수 계산: "타겟 글과 겹치는 태그 수" * 10 + 카테고리 일치 시 5점 + 그룹 일치 시 1점
         // 태그가 없으면 IN () 이 깨지므로, 겹치는 태그 점수를 0으로 고정한다.
@@ -650,13 +643,36 @@ export class PostsService {
       .limit(3)
       .setParameters({ categoryId, groupId, tagIds });
 
-    const relatedPosts = await query.getRawMany();
+    const scoredRows = await query.getRawMany<{ id: number; score: string }>();
 
     // score DESC로 정렬돼 있어 0점 글은 항상 맨 아래 → limit(3) 뒤에 걸러도 유효 글을 놓치지 않는다.
-    return relatedPosts
-      .map((post) => ({ ...post, score: Number(post.score) }))
-      .filter((post) => post.score > 0)
+    const ranked = scoredRows
+      .map((row) => ({ id: Number(row.id), score: Number(row.score) }))
+      .filter((row) => row.score > 0)
       .sort((a, b) => b.score - a.score);
+
+    if (ranked.length === 0) return [];
+
+    // 2단계: 고른 글을 리스트(findPosts)와 같은 관계로 다시 읽어 같은 DTO로 내려준다.
+    // raw 컬럼을 그대로 내려주면 응답 모양이 리스트와 달라진다 — 예전엔 readPermission 철자가
+    // DTO(readPermisson)와 달라 프론트가 권한을 못 읽었고, 잠금 표시·권한 토스트가 빠져 있었다.
+    const posts = await this.postRepo.find({
+      where: { id: In(ranked.map((row) => row.id)) },
+      relations: ['category', 'category.group', 'author', 'tags'],
+    });
+    const postById = new Map(posts.map((post) => [post.id, post]));
+
+    return ranked.flatMap(({ id, score }) => {
+      const post = postById.get(id);
+      if (!post) return [];
+
+      post.tags = [...(post.tags ?? [])].sort((a, b) =>
+        a.title.localeCompare(b.title),
+      );
+      const dto = PostListItemResponseDto.fromEntity(post);
+      dto.score = score;
+      return [dto];
+    });
   }
 
   async findAdjacentPosts(postId: number, currentUser: CurrentUserDto | null) {
