@@ -4,9 +4,9 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  Matches,
   MaxLength,
 } from 'class-validator';
+import { IsSlug } from 'src/common/decorator/is-slug.decorator';
 
 export class CreateUserGroupDto {
   @ApiProperty({ example: 'VIP 멤버', description: '그룹 이름 (최대 30자)' })
@@ -17,15 +17,13 @@ export class CreateUserGroupDto {
 
   @ApiProperty({
     example: 'vip-members',
-    description: 'slug (소문자, 숫자, 하이픈만, 최대 50자)',
+    required: false,
+    description:
+      'slug (소문자·숫자를 하이픈으로 이음, 최대 50자). 생략하면 이름에서 만든다 — 이름이 한글이면 직접 지정해야 한다.',
   })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(50)
-  @Matches(/^[a-z0-9-]+$/, {
-    message: 'slug는 소문자, 숫자, 하이픈만 사용할 수 있습니다.',
-  })
-  slug: string;
+  @IsOptional()
+  @IsSlug()
+  slug?: string;
 
   @ApiProperty({
     example: '프리미엄 콘텐츠 접근 그룹',

@@ -10,6 +10,7 @@ import { UserGroupMembershipEntity } from './entities/user-group-membership.enti
 import { UserEntity } from 'src/users/entities/user.entity';
 import { CreateUserGroupDto } from './dto/create-user-group.dto';
 import { UpdateUserGroupDto } from './dto/update-user-group.dto';
+import { resolveSlug } from 'src/common/util/slugify';
 
 @Injectable()
 export class UserGroupsService {
@@ -56,15 +57,17 @@ export class UserGroupsService {
   }
 
   async create(dto: CreateUserGroupDto) {
+    // slug를 안 주면 이름에서 만든다 (분류 slug와 같은 규칙 — src/common/util/slugify.ts)
+    const slug = resolveSlug(dto.name, dto.slug);
     const dup = await this.groupRepo.findOne({
-      where: [{ name: dto.name }, { slug: dto.slug }],
+      where: [{ name: dto.name }, { slug }],
     });
     if (dup) {
       throw new ConflictException(
         dup.name === dto.name ? 'name already in use' : 'slug already in use',
       );
     }
-    const group = this.groupRepo.create(dto);
+    const group = this.groupRepo.create({ ...dto, slug });
     return this.groupRepo.save(group);
   }
 
