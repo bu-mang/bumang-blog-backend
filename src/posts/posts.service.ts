@@ -129,7 +129,13 @@ export class PostsService {
     query.orderBy('post.createdAt', 'DESC');
 
     // pagination 적용
-    query.skip((page - 1) * size).take(size);
+    // pageIndex는 쿼리스트링에서 그대로 온다(0도 @IsInt()를 통과). 0 이하가 들어오면
+    // skip()이 음수 OFFSET을 만들어 PostgreSQL이 500을 낸다 — 2026-11-19 프론트
+    // sitemap.ts가 pageIndex=0을 보내 /sitemap.xml이 500이었다. 여기서 1 이상으로 누른다.
+    const safePage = Math.max(1, Math.floor(page || 1));
+    const safeSize = Math.max(1, Math.floor(size || 12));
+
+    query.skip((safePage - 1) * safeSize).take(safeSize);
 
     const [posts, totalCount] = await query.getManyAndCount();
 
@@ -182,8 +188,8 @@ export class PostsService {
 
     return new PaginatedResponseDto(
       totalCount, //
-      size,
-      page,
+      safeSize,
+      safePage,
       postDtos,
       subject,
     );
