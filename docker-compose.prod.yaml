@@ -10,7 +10,10 @@ x-logging: &default-logging
 
 services:
   nginx:
-    image: nginx:alpine
+    # 버전을 고정한다. `nginx:alpine`처럼 떠다니는 태그는 서버에 처음 받은 이미지에 멈춰 있어서
+    # (배포가 컨테이너를 다시 받지 않았다) 2026-11 HTTP/2 취약점(CVE-2026-123007 등, 1.31.9에서 수정)을
+    # 모른 채 1.31.2로 돌고 있었다. 올릴 땐 이 줄을 바꾸고, 바꾼 버전으로 `nginx -t`를 먼저 돌린다.
+    image: nginx:1.31.9-alpine
     container_name: bumang_blog_nginx
     ports:
       - '80:80'

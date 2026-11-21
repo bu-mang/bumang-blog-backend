@@ -59,8 +59,10 @@ jobs:
             echo "⏳ 앱이 올라올 때까지 대기..."
             sleep 15
 
-            echo "🔄 nginx 재시작 (DNS 캐시 갱신)..."
-            docker restart bumang_blog_nginx
+            echo "🔄 nginx 컨테이너 재생성 (DNS 캐시 갱신 + 이미지·설정 변경 반영)..."
+            # restart가 아니라 재생성한다. restart는 기존 컨테이너를 다시 켤 뿐이라 compose의
+            # nginx 이미지 버전을 바꿔도 반영되지 않는다. --no-deps: app·frontend는 건드리지 않는다.
+            docker-compose -f docker-compose.prod.yaml --env-file .env.production up -d --no-deps --force-recreate nginx
 
             echo "🔍 컨테이너 상태 확인..."
             docker ps
